@@ -10,7 +10,7 @@
           <h2 class="sf-title">
             <span>🧮</span>
             <span style="color:#ffffff">Game 4 — Shapes & Formula</span>
-            <span class="sf-tag">SF004</span>
+            <span class="sf-tag">MM004</span>
           </h2>
 
           <div class="sf-scoreboard">
@@ -39,11 +39,6 @@
               <option value="hard">Hard</option>
             </select>
           </div>
-
-          <div class="sf-control sf-toggle">
-            <input type="checkbox" id="sf-show-hints" />
-            <label for="sf-show-hints">Show memory hints</label>
-          </div>
         </div>
 
         <div class="sf-question-box">
@@ -51,7 +46,11 @@
             <div class="sf-sub" id="sf-instructions">
               Memorise the formula — pick the correct one. (10 questions per quiz)
             </div>
-            <div class="sf-question" id="sf-question">—</div>
+
+            <div class="sf-question-row">
+              <div class="sf-question" id="sf-question">—</div>
+              <div class="sf-shape" id="sf-shape" aria-hidden="true"></div>
+            </div>
           </div>
 
           <div class="sf-q-right">
@@ -71,8 +70,8 @@
           </div>
         </div>
 
-        <details class="sf-formula-sheet">
-          <summary>📌 Quick Formula Sheet (for revision)</summary>
+        <details class="sf-formula-sheet" id="sf-formula-details">
+          <summary id="sf-formula-summary">📌 Quick Formula Sheet (for revision)</summary>
           <div class="sf-sheet-grid" id="sf-sheet"></div>
         </details>
       </div>
@@ -158,15 +157,6 @@
         font-size:.9rem;
         outline:none;
       }
-      .sf-toggle{
-        margin-left:auto;
-        gap:10px;
-      }
-      .sf-toggle input{
-        width:16px;
-        height:16px;
-        accent-color:#6366f1;
-      }
 
       .sf-question-box{
         margin-top:14px;
@@ -188,11 +178,36 @@
         opacity:.9;
         margin-bottom:6px;
       }
+
+      .sf-question-row{
+        display:flex;
+        gap:14px;
+        align-items:center;
+        justify-content:space-between;
+        flex-wrap:wrap;
+      }
+
       .sf-question{
         font-size:1.22rem;
         font-weight:700;
         letter-spacing:.2px;
+        flex: 1;
+        min-width: 240px;
       }
+
+      .sf-shape{
+        width: 170px;
+        max-width: 100%;
+        display:flex;
+        justify-content:flex-end;
+      }
+      .sf-shape svg{
+        width: 170px;
+        height:auto;
+        display:block;
+        opacity: .95;
+      }
+
       .sf-q-right{
         min-width:260px;
       }
@@ -252,8 +267,9 @@
         color:#e5e7eb;
       }
       .sf-formula{
-        font-size:1.05rem;
-        font-weight:650;
+        font-size:1.08rem;
+        font-weight:750;
+        letter-spacing:.2px;
       }
       .sf-desc{
         margin-top:6px;
@@ -351,7 +367,7 @@
         100%{transform:translateY(110vh) rotate(340deg);opacity:0;}
       }
 
-      /* Party popper stream (matches your Game 3 / updated Game 1 & 2 style) */
+      /* Party popper stream */
       .sf-stream{
         position:fixed;
         z-index:99999;
@@ -364,232 +380,182 @@
       @media(max-width:820px){
         .sf-options{grid-template-columns:1fr;}
         .sf-sheet-grid{grid-template-columns:1fr;}
-        .sf-toggle{margin-left:0;}
+        .sf-shape svg{ width: 150px; }
       }
     `;
     document.head.appendChild(style);
 
     // ---------- DATA ----------
-    const letters = ["A", "B", "C", "D"];
+    // 8 options (A–H)
+    const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
     const emojis = ["🎉", "🎊", "🎈", "✨", "💫", "🌟", "🤩", "💯", "🥇", "🥈", "🥉"];
 
+    // ---------- SHAPES (SVG) ----------
+    function shapeSVG(shapeKey) {
+      const stroke = "rgba(255,255,255,.88)";
+      const fill = "rgba(255,255,255,.08)";
+      const faint = "rgba(255,255,255,.22)";
+
+      switch (shapeKey) {
+        case "square":
+          return `<svg viewBox="0 0 120 120">
+            <rect x="20" y="20" width="80" height="80" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "rectangle":
+          return `<svg viewBox="0 0 160 120">
+            <rect x="18" y="30" width="124" height="60" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "triangle":
+          return `<svg viewBox="0 0 160 120">
+            <polygon points="20,96 80,24 140,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "trapezium":
+          return `<svg viewBox="0 0 160 120">
+            <polygon points="40,30 120,30 140,96 20,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "parallelogram":
+          return `<svg viewBox="0 0 160 120">
+            <polygon points="40,30 140,30 120,96 20,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "rhombus":
+          return `<svg viewBox="0 0 160 120">
+            <polygon points="80,20 140,60 80,100 20,60" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "kite":
+          return `<svg viewBox="0 0 160 120">
+            <polygon points="80,18 125,60 80,104 35,60" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "circle":
+          return `<svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="40" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "sector":
+          return `<svg viewBox="0 0 120 120">
+            <path d="M60 60 L60 20 A40 40 0 0 1 98 72 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <circle cx="60" cy="60" r="40" fill="none" stroke="${faint}" stroke-width="2"/>
+          </svg>`;
+
+        // ✅ Updated: Proper-looking square pyramid (isometric base + apex)
+        case "pyramid":
+          return `<svg viewBox="0 0 180 120">
+            <!-- Base (parallelogram) -->
+            <polygon points="45,85 115,85 150,100 80,100"
+              fill="${fill}" stroke="${stroke}" stroke-width="3" />
+            <!-- Back edge (faint for depth) -->
+            <line x1="45" y1="85" x2="80" y2="100" stroke="${faint}" stroke-width="3" />
+            <line x1="115" y1="85" x2="150" y2="100" stroke="${faint}" stroke-width="3" />
+            <!-- Apex -->
+            <circle cx="95" cy="28" r="2.5" fill="${stroke}" />
+            <!-- Edges -->
+            <line x1="95" y1="28" x2="45" y2="85" stroke="${stroke}" stroke-width="3" />
+            <line x1="95" y1="28" x2="115" y2="85" stroke="${stroke}" stroke-width="3" />
+            <line x1="95" y1="28" x2="150" y2="100" stroke="${faint}" stroke-width="3" />
+            <line x1="95" y1="28" x2="80" y2="100" stroke="${stroke}" stroke-width="3" />
+          </svg>`;
+
+        case "cone":
+          return `<svg viewBox="0 0 160 120">
+            <ellipse cx="80" cy="92" rx="52" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <path d="M28 92 L80 18 L132 92" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "cuboid":
+          return `<svg viewBox="0 0 180 120">
+            <path d="M40 42 L110 42 L140 22 L70 22 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <path d="M40 42 L40 92 L110 92 L110 42 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <path d="M110 42 L110 92 L140 72 L140 22 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+          </svg>`;
+        case "cylinder":
+          return `<svg viewBox="0 0 160 120">
+            <ellipse cx="80" cy="28" rx="46" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <path d="M34 28 L34 88" stroke="${stroke}" stroke-width="3"/>
+            <path d="M126 28 L126 88" stroke="${stroke}" stroke-width="3"/>
+            <ellipse cx="80" cy="88" rx="46" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="0.95"/>
+          </svg>`;
+        case "sphere":
+          return `<svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="42" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+            <ellipse cx="60" cy="60" rx="42" ry="16" fill="none" stroke="${faint}" stroke-width="2"/>
+            <ellipse cx="60" cy="60" rx="18" ry="42" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+          </svg>`;
+        default:
+          return `<svg viewBox="0 0 120 120">
+            <rect x="20" y="20" width="80" height="80" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity=".6"/>
+          </svg>`;
+      }
+    }
+
+    // ---------- FORMULA DISPLAY (remove giveaways in OPTIONS) ----------
+    function stripLeftSide(formula) {
+      // Remove leading "A = ", "P = ", "V = ", "CSA = ", "SA = ", "L = " (and variations)
+      // Keeps the right-hand expression only.
+      const s = String(formula || "").trim();
+      const m = s.match(/^\s*(A|P|V|CSA|SA|L)\s*=\s*(.+)\s*$/i);
+      return m ? m[2].trim() : s;
+    }
+
     // We keep formulas in a structured bank so the game can generate distractors intelligently.
-    // Note: using θ in degrees (common in SG syllabi).
+    // NOTE: Width -> Breadth (b)
+    // NOTE: Cylinder volume shown as (π)(r)^2h (no "V =")
     const BANK = [
       // 2D
-      {
-        id: "sq_area",
-        topic: "2d",
-        title: "Square — area",
-        question: "Square: What is the formula for area?",
-        formula: "A = a²",
-        desc: "a = side length",
-        hint: "Square = side × side."
-      },
-      {
-        id: "sq_per",
-        topic: "2d",
-        title: "Square — perimeter",
-        question: "Square: What is the formula for perimeter?",
-        formula: "P = 4a",
-        desc: "a = side length",
-        hint: "Perimeter = 4 equal sides."
-      },
-      {
-        id: "rect_area",
-        topic: "2d",
-        title: "Rectangle — area",
-        question: "Rectangle: What is the formula for area?",
-        formula: "A = lw",
-        desc: "l = length, w = width",
-        hint: "Rectangle = length × width."
-      },
-      {
-        id: "rect_per",
-        topic: "2d",
-        title: "Rectangle — perimeter",
-        question: "Rectangle: What is the formula for perimeter?",
-        formula: "P = 2(l + w)",
-        desc: "l = length, w = width",
-        hint: "Go around: l + w + l + w."
-      },
-      {
-        id: "trap_area",
-        topic: "2d",
-        title: "Trapezium — area",
-        question: "Trapezium: What is the formula for area?",
-        formula: "A = ½(a + b)h",
-        desc: "a, b = parallel sides, h = height",
-        hint: "Average of parallel sides × height."
-      },
-      {
-        id: "para_area",
-        topic: "2d",
-        title: "Parallelogram — area",
-        question: "Parallelogram: What is the formula for area?",
-        formula: "A = bh",
-        desc: "b = base, h = perpendicular height",
-        hint: "Same as rectangle: base × height."
-      },
-      {
-        id: "rhom_area",
-        topic: "2d",
-        title: "Rhombus — area",
-        question: "Rhombus: What is the formula for area (using diagonals)?",
-        formula: "A = ½d₁d₂",
-        desc: "d₁, d₂ = diagonals",
-        hint: "Half of diagonal × diagonal."
-      },
-      {
-        id: "kite_area",
-        topic: "2d",
-        title: "Kite — area",
-        question: "Kite: What is the formula for area?",
-        formula: "A = ½d₁d₂",
-        desc: "d₁, d₂ = diagonals",
-        hint: "Same as rhombus (diagonals)."
-      },
-      {
-        id: "tri_area",
-        topic: "2d",
-        title: "Triangle — area",
-        question: "Triangle: What is the formula for area?",
-        formula: "A = ½bh",
-        desc: "b = base, h = perpendicular height",
-        hint: "Half of rectangle/parallelogram."
-      },
-      {
-        id: "sector_area",
-        topic: "2d",
-        title: "Sector — area",
-        question: "Circle sector: What is the formula for area (θ in degrees)?",
-        formula: "A = (θ/360)πr²",
-        desc: "θ = central angle (°), r = radius",
-        hint: "Fraction of full circle area."
-      },
-      {
-        id: "sector_arc",
-        topic: "2d",
-        title: "Sector — arc length",
-        question: "Circle sector: What is the formula for arc length (θ in degrees)?",
-        formula: "L = (θ/360)2πr",
-        desc: "θ = central angle (°), r = radius",
-        hint: "Fraction of full circumference."
-      },
+      { id: "sq_area", topic: "2d", title: "Square — area", question: "Square: What is the formula for area?", formula: "A = a²", desc: "a = side length", hint: "Square = side × side.", shape: "square" },
+      { id: "sq_per", topic: "2d", title: "Square — perimeter", question: "Square: What is the formula for perimeter?", formula: "P = 4a", desc: "a = side length", hint: "Perimeter = 4 equal sides.", shape: "square" },
+      { id: "rect_area", topic: "2d", title: "Rectangle — area", question: "Rectangle: What is the formula for area?", formula: "A = lb", desc: "l = length, b = breadth", hint: "Rectangle = length × breadth.", shape: "rectangle" },
+      { id: "rect_per", topic: "2d", title: "Rectangle — perimeter", question: "Rectangle: What is the formula for perimeter?", formula: "P = 2(l + b)", desc: "l = length, b = breadth", hint: "Go around: l + b + l + b.", shape: "rectangle" },
+      { id: "trap_area", topic: "2d", title: "Trapezium — area", question: "Trapezium: What is the formula for area?", formula: "A = ½(a + b)h", desc: "a, b = parallel sides, h = height", hint: "Average of parallel sides × height.", shape: "trapezium" },
+      { id: "para_area", topic: "2d", title: "Parallelogram — area", question: "Parallelogram: What is the formula for area?", formula: "A = bh", desc: "b = base, h = perpendicular height", hint: "Same as rectangle: base × height.", shape: "parallelogram" },
+      { id: "rhom_area", topic: "2d", title: "Rhombus — area", question: "Rhombus: What is the formula for area (using diagonals)?", formula: "A = ½d₁d₂", desc: "d₁, d₂ = diagonals", hint: "Half of diagonal × diagonal.", shape: "rhombus" },
+      { id: "kite_area", topic: "2d", title: "Kite — area", question: "Kite: What is the formula for area?", formula: "A = ½d₁d₂", desc: "d₁, d₂ = diagonals", hint: "Same as rhombus (diagonals).", shape: "kite" },
+      { id: "tri_area", topic: "2d", title: "Triangle — area", question: "Triangle: What is the formula for area?", formula: "A = ½bh", desc: "b = base, h = perpendicular height", hint: "Half of rectangle/parallelogram.", shape: "triangle" },
+      { id: "sector_area", topic: "2d", title: "Sector — area", question: "Circle sector: What is the formula for area (θ in degrees)?", formula: "A = (θ/360)πr²", desc: "θ = central angle (°), r = radius", hint: "Fraction of full circle area.", shape: "sector" },
+      { id: "sector_arc", topic: "2d", title: "Sector — arc length", question: "Circle sector: What is the formula for arc length (θ in degrees)?", formula: "L = (θ/360)2πr", desc: "θ = central angle (°), r = radius", hint: "Fraction of full circumference.", shape: "sector" },
 
       // 3D
-      {
-        id: "pyr_vol",
-        topic: "3d",
-        title: "Pyramid — volume",
-        question: "Pyramid (any base): What is the formula for volume?",
-        formula: "V = ⅓(Bh)",
-        desc: "B = base area, h = perpendicular height",
-        hint: "Pyramid = 1/3 of prism with same base & height."
-      },
-      {
-        id: "cone_vol",
-        topic: "3d",
-        title: "Cone — volume",
-        question: "Cone: What is the formula for volume?",
-        formula: "V = ⅓πr²h",
-        desc: "r = radius, h = perpendicular height",
-        hint: "Cone = 1/3 of cylinder."
-      },
-      {
-        id: "cone_csa",
-        topic: "3d",
-        title: "Cone — curved surface area",
-        question: "Cone: What is the formula for curved surface area?",
-        formula: "CSA = πrl",
-        desc: "r = radius, l = slant height",
-        hint: "Cone side = π × r × slant height."
-      },
-      {
-        id: "cuboid_vol",
-        topic: "3d",
-        title: "Cuboid — volume",
-        question: "Cuboid: What is the formula for volume?",
-        formula: "V = lwh",
-        desc: "l = length, w = width, h = height",
-        hint: "Three dimensions multiplied."
-      },
-      {
-        id: "cuboid_sa",
-        topic: "3d",
-        title: "Cuboid — surface area",
-        question: "Cuboid: What is the formula for total surface area?",
-        formula: "SA = 2(lw + lh + wh)",
-        desc: "l, w, h are dimensions",
-        hint: "Two of each face area."
-      },
-      {
-        id: "cyl_vol",
-        topic: "3d",
-        title: "Cylinder — volume",
-        question: "Cylinder: What is the formula for volume?",
-        formula: "V = πr²h",
-        desc: "r = radius, h = height",
-        hint: "Base area × height."
-      },
-      {
-        id: "cyl_csa",
-        topic: "3d",
-        title: "Cylinder — curved surface area",
-        question: "Cylinder: What is the formula for curved surface area?",
-        formula: "CSA = 2πrh",
-        desc: "r = radius, h = height",
-        hint: "Circumference × height."
-      },
-      {
-        id: "sphere_vol",
-        topic: "3d",
-        title: "Sphere — volume",
-        question: "Sphere: What is the formula for volume?",
-        formula: "V = 4/3 πr³",
-        desc: "r = radius",
-        hint: "4/3 × π × r³."
-      },
-      {
-        id: "sphere_sa",
-        topic: "3d",
-        title: "Sphere — surface area",
-        question: "Sphere: What is the formula for surface area?",
-        formula: "SA = 4πr²",
-        desc: "r = radius",
-        hint: "4 × area of great circle."
-      }
+      { id: "pyr_vol", topic: "3d", title: "Pyramid — volume", question: "Pyramid (any base): What is the formula for volume?", formula: "V = ⅓(Bh)", desc: "B = base area, h = perpendicular height", hint: "Pyramid = 1/3 of prism with same base & height.", shape: "pyramid" },
+      { id: "cone_vol", topic: "3d", title: "Cone — volume", question: "Cone: What is the formula for volume?", formula: "V = ⅓πr²h", desc: "r = radius, h = perpendicular height", hint: "Cone = 1/3 of cylinder.", shape: "cone" },
+      { id: "cone_csa", topic: "3d", title: "Cone — curved surface area", question: "Cone: What is the formula for curved surface area?", formula: "CSA = πrl", desc: "r = radius, l = slant height", hint: "Cone side = π × r × slant height.", shape: "cone" },
+      { id: "cuboid_vol", topic: "3d", title: "Cuboid — volume", question: "Cuboid: What is the formula for volume?", formula: "V = lbh", desc: "l = length, b = breadth, h = height", hint: "Three dimensions multiplied.", shape: "cuboid" },
+      { id: "cuboid_sa", topic: "3d", title: "Cuboid — surface area", question: "Cuboid: What is the formula for total surface area?", formula: "SA = 2(lb + lh + bh)", desc: "l, b, h are dimensions", hint: "Two of each face area.", shape: "cuboid" },
+      { id: "cyl_vol", topic: "3d", title: "Cylinder — volume", question: "Cylinder: What is the formula for volume?", formula: "(π)(r)^2h", desc: "r = radius, h = height", hint: "Base area × height.", shape: "cylinder" },
+      { id: "cyl_csa", topic: "3d", title: "Cylinder — curved surface area", question: "Cylinder: What is the formula for curved surface area?", formula: "CSA = 2πrh", desc: "r = radius, h = height", hint: "Circumference × height.", shape: "cylinder" },
+      { id: "sphere_vol", topic: "3d", title: "Sphere — volume", question: "Sphere: What is the formula for volume?", formula: "V = 4/3 πr³", desc: "r = radius", hint: "4/3 × π × r³.", shape: "sphere" },
+      { id: "sphere_sa", topic: "3d", title: "Sphere — surface area", question: "Sphere: What is the formula for surface area?", formula: "SA = 4πr²", desc: "r = radius", hint: "4 × area of great circle.", shape: "sphere" },
     ];
 
     const DIFF = {
       warmup: { time: 0 },
       easy: { time: 60 },
       normal: { time: 45 },
-      hard: { time: 30 }
+      hard: { time: 30 },
     };
 
     // ---------- ELEMENTS ----------
     const topicSel = document.getElementById("sf-topic");
     const modeSel = document.getElementById("sf-mode");
-    const showHintsEl = document.getElementById("sf-show-hints");
 
     const scoreEl = document.getElementById("sf-score");
     const streakEl = document.getElementById("sf-streak");
     const timerEl = document.getElementById("sf-timer");
 
     const questionEl = document.getElementById("sf-question");
+    const shapeEl = document.getElementById("sf-shape");
     const metaEl = document.getElementById("sf-meta");
-    const hintEl = document.getElementById("sf-hint");
+    const hintEl = document.getElementById("sf-hint"); // kept but no hints shown
     const feedbackEl = document.getElementById("sf-feedback");
     const optionsEl = document.getElementById("sf-options");
 
     const nextBtn = document.getElementById("sf-next");
     const resetBtn = document.getElementById("sf-reset");
 
+    const formulaDetails = document.getElementById("sf-formula-details");
+    const formulaSummary = document.getElementById("sf-formula-summary");
+
     // ---------- STATE ----------
     const TOTAL_QUESTIONS = 10;
+    const OPTIONS_COUNT = 8; // ✅ 4 more options
     let inProgress = false;
     let locked = false;
+    let attemptedThisQ = false;
 
     let score = 0;
     let total = 0;
@@ -641,7 +607,7 @@
       beep(400, 260, "sine", 200, 0.06);
     }
 
-    // ---------- CONFETTI (same stream style as your other games) ----------
+    // ---------- CONFETTI ----------
     function shootPopperStream(originX, originY, side, totalCount) {
       let count = 0;
       const interval = setInterval(() => {
@@ -682,7 +648,7 @@
             return;
           }
 
-          const t = 1 - Math.pow(1 - tRaw, 2); // ease-out
+          const t = 1 - Math.pow(1 - tRaw, 2);
           const u = 1 - t;
 
           const x = u * u * startX + 2 * u * t * controlX + t * t * targetX;
@@ -693,12 +659,9 @@
 
           let opacity;
           if (t < 0.55) opacity = 1;
-          else {
-            const fadeT = (t - 0.55) / 0.45;
-            opacity = 1 - fadeT;
-          }
-          span.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+          else opacity = 1 - (t - 0.55) / 0.45;
 
+          span.style.opacity = String(Math.max(0, Math.min(1, opacity)));
           requestAnimationFrame(animate);
         }
 
@@ -714,7 +677,6 @@
       const factor = intensity || 1;
       const count = Math.max(12, Math.round(base * factor));
 
-      // top rain
       for (let i = 0; i < count; i++) {
         const span = document.createElement("span");
         span.className = "sf-confetti";
@@ -727,7 +689,6 @@
         setTimeout(() => span.remove(), 2200);
       }
 
-      // bottom poppers
       const h = window.innerHeight || 800;
       const w = window.innerWidth || 1200;
       const totalPerSide = 20 + Math.round(6 * factor);
@@ -754,10 +715,12 @@
       stopTimer();
       const cfg = getModeCfg();
       timeLeft = cfg.time;
+
       if (isWarmup() || cfg.time <= 0) {
         timerEl.textContent = "☕ Warm-Up (No Timer)";
         return;
       }
+
       timerEl.textContent = `⏱ ${timeLeft}s`;
       timerId = setInterval(() => {
         timeLeft--;
@@ -774,7 +737,7 @@
 
     function timeUp() {
       if (locked || isWarmup() || !inProgress) return;
-      locked = false; // allow 0.5 marks after time up
+      locked = false;
       feedbackEl.textContent = "⏰ Time’s up! You can still answer for 0.5 points.";
       playTimeUpSound();
     }
@@ -788,8 +751,6 @@
 
     function pickQuestion() {
       const pool = pickPool();
-
-      // try to avoid recent repeats
       for (let tries = 0; tries < 60; tries++) {
         const q = pool[Math.floor(Math.random() * pool.length)];
         if (!recentIds.includes(q.id)) return q;
@@ -798,16 +759,14 @@
     }
 
     function buildOptions(correct) {
-      // 4 options total (A-D)
       const opts = [correct];
       const seen = new Set([correct.id]);
 
-      // Prefer distractors from same topic, then fall back to full bank
       const topicPool = BANK.filter((x) => x.topic === correct.topic);
       const fallbackPool = BANK;
 
       function addFrom(pool) {
-        for (let tries = 0; tries < 200 && opts.length < 4; tries++) {
+        for (let tries = 0; tries < 400 && opts.length < OPTIONS_COUNT; tries++) {
           const cand = pool[Math.floor(Math.random() * pool.length)];
           if (!seen.has(cand.id) && cand.formula !== correct.formula) {
             opts.push(cand);
@@ -825,8 +784,7 @@
         [opts[i], opts[j]] = [opts[j], opts[i]];
       }
 
-      // Keep only 4
-      return opts.slice(0, 4);
+      return opts.slice(0, OPTIONS_COUNT);
     }
 
     function renderFormulaSheet() {
@@ -844,6 +802,7 @@
         items.forEach((it) => {
           const line = document.createElement("div");
           line.className = "sf-sheet-line";
+          // Formula sheet keeps full formula (revision purpose)
           line.textContent = `${it.title}: ${it.formula}`;
           card.appendChild(line);
         });
@@ -854,6 +813,18 @@
       addSection("3D Solids", threeD);
     }
 
+    function closeFormulaSheet() {
+      if (formulaDetails) formulaDetails.open = false;
+    }
+
+    function applyFormulaPenalty() {
+      if (!inProgress) return;
+      if (isWarmup()) return;
+
+      score = score - 0.5;
+      updateScore();
+    }
+
     // ---------- GAME FLOW ----------
     function startQuiz() {
       score = 0;
@@ -862,18 +833,20 @@
       qIndex = 0;
       inProgress = true;
       locked = false;
+      attemptedThisQ = false;
 
       recentIds = [];
       feedbackEl.textContent = "";
-      hintEl.textContent = "";
+      hintEl.textContent = ""; // no memory hints
       updateScore();
 
       topicSel.disabled = true;
       modeSel.disabled = true;
 
       nextBtn.textContent = "Next Question ▶";
-      nextBtn.disabled = false;
+      nextBtn.disabled = true; // cannot skip; enabled only after attempt
 
+      closeFormulaSheet();
       nextQuestion();
     }
 
@@ -881,12 +854,14 @@
       stopTimer();
       inProgress = false;
       locked = true;
+      attemptedThisQ = false;
 
       topicSel.disabled = false;
       modeSel.disabled = false;
 
       metaEl.textContent = `Quiz finished (${TOTAL_QUESTIONS} questions)`;
       questionEl.textContent = "—";
+      shapeEl.innerHTML = "";
       hintEl.textContent = "";
       optionsEl.innerHTML = "";
       timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
@@ -897,12 +872,15 @@
 
       nextBtn.textContent = "Restart Quiz ↻";
       nextBtn.disabled = false;
+
+      closeFormulaSheet();
     }
 
     function resetQuiz() {
       stopTimer();
       inProgress = false;
       locked = false;
+      attemptedThisQ = false;
 
       score = 0;
       total = 0;
@@ -916,12 +894,15 @@
       updateScore();
       metaEl.textContent = "Ready";
       questionEl.textContent = "—";
+      shapeEl.innerHTML = "";
       hintEl.textContent = "";
       optionsEl.innerHTML = "";
       timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
       feedbackEl.textContent = "Choose your topic + mode, then press Start Quiz.";
       nextBtn.textContent = "Start Quiz ▶";
       nextBtn.disabled = false;
+
+      closeFormulaSheet();
     }
 
     function nextQuestion() {
@@ -931,8 +912,14 @@
         return;
       }
 
+      // Ensure the Quick Formula is closed just before the next question shows up
+      closeFormulaSheet();
+
       stopTimer();
       locked = false;
+      attemptedThisQ = false;
+      nextBtn.disabled = true;
+
       feedbackEl.textContent = "";
       optionsEl.innerHTML = "";
       hintEl.textContent = "";
@@ -945,12 +932,7 @@
       if (recentIds.length > RECENT_LIMIT) recentIds.shift();
 
       questionEl.textContent = current.question;
-
-      if (showHintsEl.checked) {
-        hintEl.textContent = "💡 Memory hint: " + current.hint;
-      } else {
-        hintEl.textContent = "";
-      }
+      shapeEl.innerHTML = shapeSVG(current.shape);
 
       const opts = buildOptions(current);
       opts.forEach((opt, i) => {
@@ -958,13 +940,16 @@
         btn.className = "sf-option";
         btn.dataset.correct = opt.id === current.id ? "1" : "0";
 
+        // ✅ Remove "V =", "CSA =", etc in OPTIONS (no giveaway)
+        const displayed = stripLeftSide(opt.formula);
+
         btn.innerHTML = `
-          <div class="sf-letter">${letters[i]}</div>
-          <div class="sf-formula">${opt.formula}</div>
+          <div class="sf-letter">${letters[i] || "?"}</div>
+          <div class="sf-formula">${displayed}</div>
           <div class="sf-desc">${opt.desc}</div>
         `;
 
-        btn.addEventListener("click", () => handlePick(btn, opt));
+        btn.addEventListener("click", () => handlePick(btn));
         optionsEl.appendChild(btn);
       });
 
@@ -978,31 +963,28 @@
       });
     }
 
-    function handlePick(card, picked) {
+    function handlePick(card) {
       if (locked || !inProgress) return;
 
       const isCorrect = card.dataset.correct === "1";
+      attemptedThisQ = true;
+      nextBtn.disabled = false;
 
       // Warm-up: no score change
       if (isWarmup()) {
         locked = true;
 
         if (isCorrect) {
-          feedbackEl.textContent = `✅ Correct! ${current.title}: ${current.formula}`;
+          feedbackEl.textContent = `✅ Correct!`;
           card.classList.add("correct");
           revealCorrectOption();
           launchConfetti(2);
           playCorrectSound();
         } else {
-          feedbackEl.textContent = `❌ Not quite. Correct formula: ${current.formula}`;
+          feedbackEl.textContent = `❌ Not quite. Correct formula: ${stripLeftSide(current.formula)}`;
           card.classList.add("wrong");
           revealCorrectOption();
           playWrongSound();
-        }
-
-        // Always show a quick “memorise” line
-        if (showHintsEl.checked) {
-          hintEl.textContent = "💡 Memory hint: " + current.hint;
         }
         return;
       }
@@ -1018,13 +1000,13 @@
         if (isCorrect) {
           score += 1;
           streak++;
-          feedbackEl.textContent = `✅ Correct! ${current.formula}`;
+          feedbackEl.textContent = `✅ Correct!`;
           card.classList.add("correct");
           launchConfetti(3);
           playCorrectSound();
         } else {
           streak = 0;
-          feedbackEl.textContent = `❌ Wrong. Correct formula: ${current.formula}`;
+          feedbackEl.textContent = `❌ Wrong. Correct: ${stripLeftSide(current.formula)}`;
           card.classList.add("wrong");
           playWrongSound();
         }
@@ -1033,13 +1015,13 @@
         if (isCorrect) {
           score += 0.5;
           streak = 0;
-          feedbackEl.textContent = `🟡 Correct (after time) → +0.5 pts. ${current.formula}`;
+          feedbackEl.textContent = `🟡 Correct (after time) → +0.5 pts.`;
           card.classList.add("correct");
           launchConfetti(1);
           playCorrectSound();
         } else {
           streak = 0;
-          feedbackEl.textContent = `❌ Wrong (0 pts). Correct formula: ${current.formula}`;
+          feedbackEl.textContent = `❌ Wrong (0 pts). Correct: ${stripLeftSide(current.formula)}`;
           card.classList.add("wrong");
           playWrongSound();
         }
@@ -1047,20 +1029,53 @@
 
       updateScore();
       revealCorrectOption();
+    }
 
-      // Nudge memorisation
-      if (showHintsEl.checked) {
-        hintEl.textContent = "💡 Memory hint: " + current.hint;
-      }
+    // ---------- QUICK FORMULA SHEET RULES ----------
+    // ✅ Requirement: warning BEFORE open (not after clicking open)
+    // - Warm-Up: allowed (no penalty)
+    // - Other modes: confirm -> if proceed, -0.5 marks and open
+    if (formulaSummary) {
+      formulaSummary.addEventListener("click", (e) => {
+        // Only intercept opening action
+        const willOpen = !formulaDetails.open;
+
+        // If closing, allow
+        if (!willOpen) return;
+
+        // Warm-Up is free
+        if (isWarmup()) return;
+
+        // Not warm-up: confirm BEFORE opening
+        // Also allow opening even if not inProgress, but no penalty unless inProgress
+        const ok = window.confirm("⚠️ Opening Quick Formula Sheet will -0.5 marks.\n\nDo you want to open it?");
+        if (!ok) {
+          e.preventDefault();
+          return;
+        }
+
+        // Apply penalty only during an active quiz
+        if (inProgress) {
+          applyFormulaPenalty();
+          feedbackEl.textContent = "⚠️ -0.5 marks (Quick Formula Sheet opened).";
+        }
+      });
     }
 
     // ---------- EVENTS ----------
     nextBtn.addEventListener("click", () => {
       if (!inProgress) {
         startQuiz();
-      } else {
-        nextQuestion();
+        return;
       }
+
+      // Disable skipping questions without attempting
+      if (!attemptedThisQ) {
+        feedbackEl.textContent = "⚠️ No skipping: please attempt this question first.";
+        return;
+      }
+
+      nextQuestion();
     });
 
     resetBtn.addEventListener("click", resetQuiz);
@@ -1068,15 +1083,6 @@
     modeSel.addEventListener("change", () => {
       if (!inProgress) {
         timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
-      }
-    });
-
-    showHintsEl.addEventListener("change", () => {
-      if (!inProgress) return;
-      if (showHintsEl.checked && current) {
-        hintEl.textContent = "💡 Memory hint: " + current.hint;
-      } else {
-        hintEl.textContent = "";
       }
     });
 
