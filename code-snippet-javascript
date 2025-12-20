@@ -1,0 +1,1093 @@
+(function () {
+  function initShapesFormulaGame() {
+    const container = document.getElementById("shapes-formula-game-container");
+    if (!container) return;
+
+    // ---------- HTML ----------
+    container.innerHTML = `
+      <div class="sf-game">
+        <div class="sf-title-row">
+          <h2 class="sf-title">
+            <span>🧮</span>
+            <span style="color:#ffffff">Game 4 — Shapes & Formula</span>
+            <span class="sf-tag">SF004</span>
+          </h2>
+
+          <div class="sf-scoreboard">
+            <div class="sf-pill" id="sf-score">Score: 0 / 0</div>
+            <div class="sf-pill" id="sf-streak">Streak: 0 🔥</div>
+            <div class="sf-pill sf-timer" id="sf-timer">⏱ –</div>
+          </div>
+        </div>
+
+        <div class="sf-control-row">
+          <div class="sf-control">
+            <label for="sf-topic">Topic:</label>
+            <select id="sf-topic">
+              <option value="mixed" selected>All (2D + 3D)</option>
+              <option value="2d">2D Shapes only</option>
+              <option value="3d">3D Solids only</option>
+            </select>
+          </div>
+
+          <div class="sf-control">
+            <label for="sf-mode">Mode:</label>
+            <select id="sf-mode">
+              <option value="warmup">Warm-Up (No Timer)</option>
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <div class="sf-control sf-toggle">
+            <input type="checkbox" id="sf-show-hints" />
+            <label for="sf-show-hints">Show memory hints</label>
+          </div>
+        </div>
+
+        <div class="sf-question-box">
+          <div class="sf-q-left">
+            <div class="sf-sub" id="sf-instructions">
+              Memorise the formula — pick the correct one. (10 questions per quiz)
+            </div>
+            <div class="sf-question" id="sf-question">—</div>
+          </div>
+
+          <div class="sf-q-right">
+            <div class="sf-meta" id="sf-meta">Ready</div>
+            <div class="sf-hint" id="sf-hint" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="sf-options" id="sf-options"></div>
+
+        <div class="sf-bottom">
+          <div class="sf-feedback" id="sf-feedback"></div>
+
+          <div class="sf-buttons">
+            <button class="sf-btn sf-primary" id="sf-next">Start Quiz ▶</button>
+            <button class="sf-btn sf-secondary" id="sf-reset">Reset 🔄</button>
+          </div>
+        </div>
+
+        <details class="sf-formula-sheet">
+          <summary>📌 Quick Formula Sheet (for revision)</summary>
+          <div class="sf-sheet-grid" id="sf-sheet"></div>
+        </details>
+      </div>
+    `;
+
+    // ---------- CSS ----------
+    const style = document.createElement("style");
+    style.innerHTML = `
+      .sf-game{
+        background:#0b1220;
+        color:#e5e7eb;
+        padding:24px;
+        border-radius:18px;
+        max-width:980px;
+        margin:24px auto;
+        position:relative;
+        overflow:hidden;
+        border:1px solid rgba(148,163,184,0.25);
+        box-shadow:0 18px 45px rgba(0,0,0,.55);
+      }
+
+      .sf-title-row{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:12px;
+        flex-wrap:wrap;
+      }
+      .sf-title{
+        margin:0;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        font-size:1.45rem;
+      }
+      .sf-tag{
+        font-size:.78rem;
+        padding:3px 10px;
+        border-radius:999px;
+        border:1px solid rgba(99,102,241,0.45);
+        background:rgba(99,102,241,0.12);
+        color:#c7d2fe;
+      }
+
+      .sf-scoreboard{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:wrap;
+      }
+      .sf-pill{
+        font-size:.86rem;
+        padding:5px 12px;
+        border-radius:999px;
+        border:1px solid rgba(148,163,184,0.28);
+        background:rgba(15,23,42,0.65);
+      }
+      .sf-timer{
+        border-color:rgba(34,197,94,0.35);
+        background:rgba(34,197,94,0.12);
+        color:#d1fae5;
+      }
+
+      .sf-control-row{
+        margin-top:12px;
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+        align-items:center;
+      }
+      .sf-control{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        font-size:.9rem;
+      }
+      .sf-control select{
+        background:#050b16;
+        color:#e5e7eb;
+        border:1px solid rgba(148,163,184,0.35);
+        border-radius:999px;
+        padding:4px 12px;
+        font-size:.9rem;
+        outline:none;
+      }
+      .sf-toggle{
+        margin-left:auto;
+        gap:10px;
+      }
+      .sf-toggle input{
+        width:16px;
+        height:16px;
+        accent-color:#6366f1;
+      }
+
+      .sf-question-box{
+        margin-top:14px;
+        padding:14px;
+        border-radius:14px;
+        border:1px solid rgba(148,163,184,0.25);
+        background:rgba(2,6,23,0.65);
+        display:flex;
+        justify-content:space-between;
+        gap:16px;
+        flex-wrap:wrap;
+      }
+      .sf-q-left{
+        min-width:280px;
+        flex:1;
+      }
+      .sf-sub{
+        font-size:.92rem;
+        opacity:.9;
+        margin-bottom:6px;
+      }
+      .sf-question{
+        font-size:1.22rem;
+        font-weight:700;
+        letter-spacing:.2px;
+      }
+      .sf-q-right{
+        min-width:260px;
+      }
+      .sf-meta{
+        font-size:.95rem;
+        opacity:.9;
+      }
+      .sf-hint{
+        margin-top:8px;
+        font-size:.92rem;
+        color:#c7d2fe;
+        min-height:18px;
+      }
+
+      .sf-options{
+        margin-top:14px;
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:10px;
+      }
+      .sf-option{
+        position:relative;
+        border-radius:14px;
+        border:1px solid rgba(148,163,184,0.25);
+        background:rgba(15,23,42,0.55);
+        padding:12px 12px 12px 46px;
+        cursor:pointer;
+        transition:transform .12s, border-color .12s, box-shadow .12s;
+      }
+      .sf-option:hover{
+        transform:translateY(-2px);
+        border-color:rgba(99,102,241,0.65);
+        box-shadow:0 10px 24px rgba(0,0,0,.45);
+      }
+      .sf-option.correct{
+        border-color:rgba(34,197,94,0.9) !important;
+        box-shadow:0 0 0 2px rgba(34,197,94,0.25), 0 14px 28px rgba(0,0,0,.45);
+      }
+      .sf-option.wrong{
+        border-color:rgba(239,68,68,0.9) !important;
+        box-shadow:0 0 0 2px rgba(239,68,68,0.2), 0 14px 28px rgba(0,0,0,.45);
+      }
+      .sf-letter{
+        position:absolute;
+        left:12px;
+        top:10px;
+        width:26px;
+        height:26px;
+        border-radius:999px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:800;
+        font-size:.9rem;
+        border:1px solid rgba(148,163,184,0.35);
+        background:rgba(2,6,23,0.65);
+        color:#e5e7eb;
+      }
+      .sf-formula{
+        font-size:1.05rem;
+        font-weight:650;
+      }
+      .sf-desc{
+        margin-top:6px;
+        font-size:.88rem;
+        opacity:.85;
+        line-height:1.25;
+      }
+
+      .sf-bottom{
+        margin-top:12px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+      .sf-feedback{
+        min-height:22px;
+        font-size:1rem;
+      }
+      .sf-buttons{
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+      .sf-btn{
+        border:none;
+        border-radius:999px;
+        padding:8px 16px;
+        cursor:pointer;
+        font-weight:700;
+      }
+      .sf-primary{
+        background:linear-gradient(135deg,#6366f1,#22c55e);
+        color:#06101f;
+      }
+      .sf-primary:hover{
+        transform:translateY(-1px);
+        box-shadow:0 10px 24px rgba(99,102,241,.35);
+      }
+      .sf-secondary{
+        background:rgba(2,6,23,0.65);
+        border:1px solid rgba(148,163,184,0.35);
+        color:#e5e7eb;
+      }
+      .sf-secondary:hover{
+        background:rgba(15,23,42,0.7);
+      }
+
+      .sf-formula-sheet{
+        margin-top:14px;
+        border-radius:14px;
+        border:1px solid rgba(148,163,184,0.25);
+        background:rgba(2,6,23,0.45);
+        padding:10px 12px;
+      }
+      .sf-formula-sheet summary{
+        cursor:pointer;
+        font-weight:700;
+        color:#e5e7eb;
+      }
+      .sf-sheet-grid{
+        margin-top:10px;
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:10px;
+      }
+      .sf-sheet-card{
+        border:1px solid rgba(148,163,184,0.22);
+        background:rgba(15,23,42,0.55);
+        border-radius:12px;
+        padding:10px 12px;
+      }
+      .sf-sheet-title{
+        font-weight:800;
+        margin-bottom:6px;
+      }
+      .sf-sheet-line{
+        font-size:.9rem;
+        opacity:.92;
+        line-height:1.28;
+      }
+
+      /* Falling confetti (top rain) */
+      .sf-confetti{
+        position:fixed;
+        z-index:99999;
+        pointer-events:none;
+        animation:sf-confetti-fall 1.8s ease-out forwards;
+        font-size:1.7rem;
+      }
+      @keyframes sf-confetti-fall{
+        0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}
+        10%{opacity:1;}
+        100%{transform:translateY(110vh) rotate(340deg);opacity:0;}
+      }
+
+      /* Party popper stream (matches your Game 3 / updated Game 1 & 2 style) */
+      .sf-stream{
+        position:fixed;
+        z-index:99999;
+        pointer-events:none;
+        font-size:1.7rem;
+        user-select:none;
+        will-change:transform, opacity;
+      }
+
+      @media(max-width:820px){
+        .sf-options{grid-template-columns:1fr;}
+        .sf-sheet-grid{grid-template-columns:1fr;}
+        .sf-toggle{margin-left:0;}
+      }
+    `;
+    document.head.appendChild(style);
+
+    // ---------- DATA ----------
+    const letters = ["A", "B", "C", "D"];
+    const emojis = ["🎉", "🎊", "🎈", "✨", "💫", "🌟", "🤩", "💯", "🥇", "🥈", "🥉"];
+
+    // We keep formulas in a structured bank so the game can generate distractors intelligently.
+    // Note: using θ in degrees (common in SG syllabi).
+    const BANK = [
+      // 2D
+      {
+        id: "sq_area",
+        topic: "2d",
+        title: "Square — area",
+        question: "Square: What is the formula for area?",
+        formula: "A = a²",
+        desc: "a = side length",
+        hint: "Square = side × side."
+      },
+      {
+        id: "sq_per",
+        topic: "2d",
+        title: "Square — perimeter",
+        question: "Square: What is the formula for perimeter?",
+        formula: "P = 4a",
+        desc: "a = side length",
+        hint: "Perimeter = 4 equal sides."
+      },
+      {
+        id: "rect_area",
+        topic: "2d",
+        title: "Rectangle — area",
+        question: "Rectangle: What is the formula for area?",
+        formula: "A = lw",
+        desc: "l = length, w = width",
+        hint: "Rectangle = length × width."
+      },
+      {
+        id: "rect_per",
+        topic: "2d",
+        title: "Rectangle — perimeter",
+        question: "Rectangle: What is the formula for perimeter?",
+        formula: "P = 2(l + w)",
+        desc: "l = length, w = width",
+        hint: "Go around: l + w + l + w."
+      },
+      {
+        id: "trap_area",
+        topic: "2d",
+        title: "Trapezium — area",
+        question: "Trapezium: What is the formula for area?",
+        formula: "A = ½(a + b)h",
+        desc: "a, b = parallel sides, h = height",
+        hint: "Average of parallel sides × height."
+      },
+      {
+        id: "para_area",
+        topic: "2d",
+        title: "Parallelogram — area",
+        question: "Parallelogram: What is the formula for area?",
+        formula: "A = bh",
+        desc: "b = base, h = perpendicular height",
+        hint: "Same as rectangle: base × height."
+      },
+      {
+        id: "rhom_area",
+        topic: "2d",
+        title: "Rhombus — area",
+        question: "Rhombus: What is the formula for area (using diagonals)?",
+        formula: "A = ½d₁d₂",
+        desc: "d₁, d₂ = diagonals",
+        hint: "Half of diagonal × diagonal."
+      },
+      {
+        id: "kite_area",
+        topic: "2d",
+        title: "Kite — area",
+        question: "Kite: What is the formula for area?",
+        formula: "A = ½d₁d₂",
+        desc: "d₁, d₂ = diagonals",
+        hint: "Same as rhombus (diagonals)."
+      },
+      {
+        id: "tri_area",
+        topic: "2d",
+        title: "Triangle — area",
+        question: "Triangle: What is the formula for area?",
+        formula: "A = ½bh",
+        desc: "b = base, h = perpendicular height",
+        hint: "Half of rectangle/parallelogram."
+      },
+      {
+        id: "sector_area",
+        topic: "2d",
+        title: "Sector — area",
+        question: "Circle sector: What is the formula for area (θ in degrees)?",
+        formula: "A = (θ/360)πr²",
+        desc: "θ = central angle (°), r = radius",
+        hint: "Fraction of full circle area."
+      },
+      {
+        id: "sector_arc",
+        topic: "2d",
+        title: "Sector — arc length",
+        question: "Circle sector: What is the formula for arc length (θ in degrees)?",
+        formula: "L = (θ/360)2πr",
+        desc: "θ = central angle (°), r = radius",
+        hint: "Fraction of full circumference."
+      },
+
+      // 3D
+      {
+        id: "pyr_vol",
+        topic: "3d",
+        title: "Pyramid — volume",
+        question: "Pyramid (any base): What is the formula for volume?",
+        formula: "V = ⅓(Bh)",
+        desc: "B = base area, h = perpendicular height",
+        hint: "Pyramid = 1/3 of prism with same base & height."
+      },
+      {
+        id: "cone_vol",
+        topic: "3d",
+        title: "Cone — volume",
+        question: "Cone: What is the formula for volume?",
+        formula: "V = ⅓πr²h",
+        desc: "r = radius, h = perpendicular height",
+        hint: "Cone = 1/3 of cylinder."
+      },
+      {
+        id: "cone_csa",
+        topic: "3d",
+        title: "Cone — curved surface area",
+        question: "Cone: What is the formula for curved surface area?",
+        formula: "CSA = πrl",
+        desc: "r = radius, l = slant height",
+        hint: "Cone side = π × r × slant height."
+      },
+      {
+        id: "cuboid_vol",
+        topic: "3d",
+        title: "Cuboid — volume",
+        question: "Cuboid: What is the formula for volume?",
+        formula: "V = lwh",
+        desc: "l = length, w = width, h = height",
+        hint: "Three dimensions multiplied."
+      },
+      {
+        id: "cuboid_sa",
+        topic: "3d",
+        title: "Cuboid — surface area",
+        question: "Cuboid: What is the formula for total surface area?",
+        formula: "SA = 2(lw + lh + wh)",
+        desc: "l, w, h are dimensions",
+        hint: "Two of each face area."
+      },
+      {
+        id: "cyl_vol",
+        topic: "3d",
+        title: "Cylinder — volume",
+        question: "Cylinder: What is the formula for volume?",
+        formula: "V = πr²h",
+        desc: "r = radius, h = height",
+        hint: "Base area × height."
+      },
+      {
+        id: "cyl_csa",
+        topic: "3d",
+        title: "Cylinder — curved surface area",
+        question: "Cylinder: What is the formula for curved surface area?",
+        formula: "CSA = 2πrh",
+        desc: "r = radius, h = height",
+        hint: "Circumference × height."
+      },
+      {
+        id: "sphere_vol",
+        topic: "3d",
+        title: "Sphere — volume",
+        question: "Sphere: What is the formula for volume?",
+        formula: "V = 4/3 πr³",
+        desc: "r = radius",
+        hint: "4/3 × π × r³."
+      },
+      {
+        id: "sphere_sa",
+        topic: "3d",
+        title: "Sphere — surface area",
+        question: "Sphere: What is the formula for surface area?",
+        formula: "SA = 4πr²",
+        desc: "r = radius",
+        hint: "4 × area of great circle."
+      }
+    ];
+
+    const DIFF = {
+      warmup: { time: 0 },
+      easy: { time: 60 },
+      normal: { time: 45 },
+      hard: { time: 30 }
+    };
+
+    // ---------- ELEMENTS ----------
+    const topicSel = document.getElementById("sf-topic");
+    const modeSel = document.getElementById("sf-mode");
+    const showHintsEl = document.getElementById("sf-show-hints");
+
+    const scoreEl = document.getElementById("sf-score");
+    const streakEl = document.getElementById("sf-streak");
+    const timerEl = document.getElementById("sf-timer");
+
+    const questionEl = document.getElementById("sf-question");
+    const metaEl = document.getElementById("sf-meta");
+    const hintEl = document.getElementById("sf-hint");
+    const feedbackEl = document.getElementById("sf-feedback");
+    const optionsEl = document.getElementById("sf-options");
+
+    const nextBtn = document.getElementById("sf-next");
+    const resetBtn = document.getElementById("sf-reset");
+
+    // ---------- STATE ----------
+    const TOTAL_QUESTIONS = 10;
+    let inProgress = false;
+    let locked = false;
+
+    let score = 0;
+    let total = 0;
+    let streak = 0;
+    let qIndex = 0;
+
+    let timerId = null;
+    let timeLeft = 0;
+
+    let current = null;
+    let recentIds = [];
+    const RECENT_LIMIT = 18;
+
+    // ---------- SOUNDS (gentle) ----------
+    let audioCtx = null;
+    function canUseAudio() {
+      return typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
+    }
+    function beep(freq, dur, type = "sine", delay = 0, vol = 0.08) {
+      if (!canUseAudio()) return;
+      try {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AC();
+        }
+        const start = audioCtx.currentTime + delay / 1000;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = vol;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + dur / 1000);
+      } catch (e) {}
+    }
+    function playCorrectSound() {
+      beep(660, 220, "sine", 0, 0.07);
+      beep(880, 240, "sine", 140, 0.07);
+      beep(1040, 280, "sine", 280, 0.06);
+    }
+    function playWrongSound() {
+      beep(260, 200, "triangle", 0, 0.07);
+      beep(200, 200, "triangle", 160, 0.06);
+    }
+    function playTimeUpSound() {
+      beep(520, 220, "sine", 0, 0.06);
+      beep(400, 260, "sine", 200, 0.06);
+    }
+
+    // ---------- CONFETTI (same stream style as your other games) ----------
+    function shootPopperStream(originX, originY, side, totalCount) {
+      let count = 0;
+      const interval = setInterval(() => {
+        if (count >= totalCount) {
+          clearInterval(interval);
+          return;
+        }
+
+        const span = document.createElement("span");
+        span.className = "sf-stream";
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        document.body.appendChild(span);
+
+        const startX = originX + (Math.random() - 0.5) * 16;
+        const startY = originY + (Math.random() - 0.5) * 16;
+
+        const screenW = window.innerWidth || 1200;
+        const screenH = window.innerHeight || 800;
+
+        const targetX = screenW * 0.5 + (Math.random() - 0.5) * screenW * 0.25;
+        const targetY = screenH * 0.32 + (Math.random() - 0.5) * screenH * 0.12;
+
+        const controlX =
+          side === "left"
+            ? screenW * 0.28 + Math.random() * screenW * 0.12
+            : screenW * 0.72 - Math.random() * screenW * 0.12;
+        const controlY = screenH * 0.12 + Math.random() * screenH * 0.1;
+
+        const startTime = performance.now();
+        const duration = 900 + Math.random() * 350;
+
+        function animate(now) {
+          const elapsed = now - startTime;
+          const tRaw = elapsed / duration;
+
+          if (tRaw >= 1) {
+            span.remove();
+            return;
+          }
+
+          const t = 1 - Math.pow(1 - tRaw, 2); // ease-out
+          const u = 1 - t;
+
+          const x = u * u * startX + 2 * u * t * controlX + t * t * targetX;
+          const y = u * u * startY + 2 * u * t * controlY + t * t * targetY;
+
+          span.style.left = x + "px";
+          span.style.top = y + "px";
+
+          let opacity;
+          if (t < 0.55) opacity = 1;
+          else {
+            const fadeT = (t - 0.55) / 0.45;
+            opacity = 1 - fadeT;
+          }
+          span.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+
+          requestAnimationFrame(animate);
+        }
+
+        span.style.opacity = "1";
+        requestAnimationFrame(animate);
+
+        count++;
+      }, 24);
+    }
+
+    function launchConfetti(intensity) {
+      const base = 30;
+      const factor = intensity || 1;
+      const count = Math.max(12, Math.round(base * factor));
+
+      // top rain
+      for (let i = 0; i < count; i++) {
+        const span = document.createElement("span");
+        span.className = "sf-confetti";
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + "vw";
+        span.style.top = Math.random() * 5 - 10 + "vh";
+        span.style.animationDelay = Math.random() * 0.7 + "s";
+        span.style.animationDuration = 1.4 + Math.random() * 0.8 + "s";
+        document.body.appendChild(span);
+        setTimeout(() => span.remove(), 2200);
+      }
+
+      // bottom poppers
+      const h = window.innerHeight || 800;
+      const w = window.innerWidth || 1200;
+      const totalPerSide = 20 + Math.round(6 * factor);
+      shootPopperStream(80, h - 80, "left", totalPerSide);
+      shootPopperStream(w - 80, h - 80, "right", totalPerSide);
+    }
+
+    // ---------- HELPERS ----------
+    function getModeCfg() {
+      return DIFF[modeSel.value] || DIFF.normal;
+    }
+    function isWarmup() {
+      return modeSel.value === "warmup";
+    }
+    function updateScore() {
+      scoreEl.textContent = `Score: ${score} / ${total}`;
+      streakEl.textContent = `Streak: ${streak} 🔥`;
+    }
+    function stopTimer() {
+      if (timerId) clearInterval(timerId);
+      timerId = null;
+    }
+    function startTimer() {
+      stopTimer();
+      const cfg = getModeCfg();
+      timeLeft = cfg.time;
+      if (isWarmup() || cfg.time <= 0) {
+        timerEl.textContent = "☕ Warm-Up (No Timer)";
+        return;
+      }
+      timerEl.textContent = `⏱ ${timeLeft}s`;
+      timerId = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          timerEl.textContent = "⏱ 0s";
+          stopTimer();
+          timeUp();
+        } else {
+          timerEl.textContent = `⏱ ${timeLeft}s`;
+        }
+      }, 1000);
+    }
+
+    function timeUp() {
+      if (locked || isWarmup() || !inProgress) return;
+      locked = false; // allow 0.5 marks after time up
+      feedbackEl.textContent = "⏰ Time’s up! You can still answer for 0.5 points.";
+      playTimeUpSound();
+    }
+
+    function pickPool() {
+      const t = topicSel.value;
+      if (t === "2d") return BANK.filter((x) => x.topic === "2d");
+      if (t === "3d") return BANK.filter((x) => x.topic === "3d");
+      return BANK.slice();
+    }
+
+    function pickQuestion() {
+      const pool = pickPool();
+
+      // try to avoid recent repeats
+      for (let tries = 0; tries < 60; tries++) {
+        const q = pool[Math.floor(Math.random() * pool.length)];
+        if (!recentIds.includes(q.id)) return q;
+      }
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function buildOptions(correct) {
+      // 4 options total (A-D)
+      const opts = [correct];
+      const seen = new Set([correct.id]);
+
+      // Prefer distractors from same topic, then fall back to full bank
+      const topicPool = BANK.filter((x) => x.topic === correct.topic);
+      const fallbackPool = BANK;
+
+      function addFrom(pool) {
+        for (let tries = 0; tries < 200 && opts.length < 4; tries++) {
+          const cand = pool[Math.floor(Math.random() * pool.length)];
+          if (!seen.has(cand.id) && cand.formula !== correct.formula) {
+            opts.push(cand);
+            seen.add(cand.id);
+          }
+        }
+      }
+
+      addFrom(topicPool);
+      addFrom(fallbackPool);
+
+      // Shuffle
+      for (let i = opts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [opts[i], opts[j]] = [opts[j], opts[i]];
+      }
+
+      // Keep only 4
+      return opts.slice(0, 4);
+    }
+
+    function renderFormulaSheet() {
+      const sheet = document.getElementById("sf-sheet");
+      if (!sheet) return;
+      sheet.innerHTML = "";
+
+      const twoD = BANK.filter((x) => x.topic === "2d");
+      const threeD = BANK.filter((x) => x.topic === "3d");
+
+      function addSection(title, items) {
+        const card = document.createElement("div");
+        card.className = "sf-sheet-card";
+        card.innerHTML = `<div class="sf-sheet-title">${title}</div>`;
+        items.forEach((it) => {
+          const line = document.createElement("div");
+          line.className = "sf-sheet-line";
+          line.textContent = `${it.title}: ${it.formula}`;
+          card.appendChild(line);
+        });
+        sheet.appendChild(card);
+      }
+
+      addSection("2D Shapes", twoD);
+      addSection("3D Solids", threeD);
+    }
+
+    // ---------- GAME FLOW ----------
+    function startQuiz() {
+      score = 0;
+      total = 0;
+      streak = 0;
+      qIndex = 0;
+      inProgress = true;
+      locked = false;
+
+      recentIds = [];
+      feedbackEl.textContent = "";
+      hintEl.textContent = "";
+      updateScore();
+
+      topicSel.disabled = true;
+      modeSel.disabled = true;
+
+      nextBtn.textContent = "Next Question ▶";
+      nextBtn.disabled = false;
+
+      nextQuestion();
+    }
+
+    function endQuiz() {
+      stopTimer();
+      inProgress = false;
+      locked = true;
+
+      topicSel.disabled = false;
+      modeSel.disabled = false;
+
+      metaEl.textContent = `Quiz finished (${TOTAL_QUESTIONS} questions)`;
+      questionEl.textContent = "—";
+      hintEl.textContent = "";
+      optionsEl.innerHTML = "";
+      timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
+
+      feedbackEl.textContent = isWarmup()
+        ? "✅ Warm-Up complete! (No score recorded.)"
+        : `✅ Quiz complete! Final score: ${score} / ${total}`;
+
+      nextBtn.textContent = "Restart Quiz ↻";
+      nextBtn.disabled = false;
+    }
+
+    function resetQuiz() {
+      stopTimer();
+      inProgress = false;
+      locked = false;
+
+      score = 0;
+      total = 0;
+      streak = 0;
+      qIndex = 0;
+      recentIds = [];
+
+      topicSel.disabled = false;
+      modeSel.disabled = false;
+
+      updateScore();
+      metaEl.textContent = "Ready";
+      questionEl.textContent = "—";
+      hintEl.textContent = "";
+      optionsEl.innerHTML = "";
+      timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
+      feedbackEl.textContent = "Choose your topic + mode, then press Start Quiz.";
+      nextBtn.textContent = "Start Quiz ▶";
+      nextBtn.disabled = false;
+    }
+
+    function nextQuestion() {
+      if (!inProgress) return;
+      if (qIndex >= TOTAL_QUESTIONS) {
+        endQuiz();
+        return;
+      }
+
+      stopTimer();
+      locked = false;
+      feedbackEl.textContent = "";
+      optionsEl.innerHTML = "";
+      hintEl.textContent = "";
+
+      qIndex++;
+      metaEl.textContent = `Question ${qIndex} of ${TOTAL_QUESTIONS}`;
+
+      current = pickQuestion();
+      recentIds.push(current.id);
+      if (recentIds.length > RECENT_LIMIT) recentIds.shift();
+
+      questionEl.textContent = current.question;
+
+      if (showHintsEl.checked) {
+        hintEl.textContent = "💡 Memory hint: " + current.hint;
+      } else {
+        hintEl.textContent = "";
+      }
+
+      const opts = buildOptions(current);
+      opts.forEach((opt, i) => {
+        const btn = document.createElement("div");
+        btn.className = "sf-option";
+        btn.dataset.correct = opt.id === current.id ? "1" : "0";
+
+        btn.innerHTML = `
+          <div class="sf-letter">${letters[i]}</div>
+          <div class="sf-formula">${opt.formula}</div>
+          <div class="sf-desc">${opt.desc}</div>
+        `;
+
+        btn.addEventListener("click", () => handlePick(btn, opt));
+        optionsEl.appendChild(btn);
+      });
+
+      startTimer();
+    }
+
+    function revealCorrectOption() {
+      const cards = optionsEl.querySelectorAll(".sf-option");
+      cards.forEach((c) => {
+        if (c.dataset.correct === "1") c.classList.add("correct");
+      });
+    }
+
+    function handlePick(card, picked) {
+      if (locked || !inProgress) return;
+
+      const isCorrect = card.dataset.correct === "1";
+
+      // Warm-up: no score change
+      if (isWarmup()) {
+        locked = true;
+
+        if (isCorrect) {
+          feedbackEl.textContent = `✅ Correct! ${current.title}: ${current.formula}`;
+          card.classList.add("correct");
+          revealCorrectOption();
+          launchConfetti(2);
+          playCorrectSound();
+        } else {
+          feedbackEl.textContent = `❌ Not quite. Correct formula: ${current.formula}`;
+          card.classList.add("wrong");
+          revealCorrectOption();
+          playWrongSound();
+        }
+
+        // Always show a quick “memorise” line
+        if (showHintsEl.checked) {
+          hintEl.textContent = "💡 Memory hint: " + current.hint;
+        }
+        return;
+      }
+
+      // Timed modes
+      const withinTime = timeLeft > 0;
+
+      locked = true;
+      stopTimer();
+      total++;
+
+      if (withinTime) {
+        if (isCorrect) {
+          score += 1;
+          streak++;
+          feedbackEl.textContent = `✅ Correct! ${current.formula}`;
+          card.classList.add("correct");
+          launchConfetti(3);
+          playCorrectSound();
+        } else {
+          streak = 0;
+          feedbackEl.textContent = `❌ Wrong. Correct formula: ${current.formula}`;
+          card.classList.add("wrong");
+          playWrongSound();
+        }
+      } else {
+        // After time up
+        if (isCorrect) {
+          score += 0.5;
+          streak = 0;
+          feedbackEl.textContent = `🟡 Correct (after time) → +0.5 pts. ${current.formula}`;
+          card.classList.add("correct");
+          launchConfetti(1);
+          playCorrectSound();
+        } else {
+          streak = 0;
+          feedbackEl.textContent = `❌ Wrong (0 pts). Correct formula: ${current.formula}`;
+          card.classList.add("wrong");
+          playWrongSound();
+        }
+      }
+
+      updateScore();
+      revealCorrectOption();
+
+      // Nudge memorisation
+      if (showHintsEl.checked) {
+        hintEl.textContent = "💡 Memory hint: " + current.hint;
+      }
+    }
+
+    // ---------- EVENTS ----------
+    nextBtn.addEventListener("click", () => {
+      if (!inProgress) {
+        startQuiz();
+      } else {
+        nextQuestion();
+      }
+    });
+
+    resetBtn.addEventListener("click", resetQuiz);
+
+    modeSel.addEventListener("change", () => {
+      if (!inProgress) {
+        timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
+      }
+    });
+
+    showHintsEl.addEventListener("change", () => {
+      if (!inProgress) return;
+      if (showHintsEl.checked && current) {
+        hintEl.textContent = "💡 Memory hint: " + current.hint;
+      } else {
+        hintEl.textContent = "";
+      }
+    });
+
+    // ---------- INIT ----------
+    renderFormulaSheet();
+    resetQuiz();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initShapesFormulaGame);
+  } else {
+    initShapesFormulaGame();
+  }
+})();
