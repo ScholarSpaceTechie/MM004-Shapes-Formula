@@ -501,7 +501,7 @@
       { id: "sq_area", topic: "2d", title: "Square — area", question: "Square: What is the formula for area?", formula: "A = a²", desc: "a = side length", hint: "Square = side × side.", shape: "square" },
       { id: "sq_per", topic: "2d", title: "Square — perimeter", question: "Square: What is the formula for perimeter?", formula: "P = 4a", desc: "a = side length", hint: "Perimeter = 4 equal sides.", shape: "square" },
       { id: "rect_area", topic: "2d", title: "Rectangle — area", question: "Rectangle: What is the formula for area?", formula: "A = lb", desc: "l = length, b = breadth", hint: "Rectangle = length × breadth.", shape: "rectangle" },
-      { id: "rect_per", topic: "2d", title: "Rectangle — perimeter", question: "Rectangle: What is the formula for perimeter?", formula: "P = 2(l + b)", desc: "l = length, b = breadth", hint: "Go around: l + b + l + b.", shape: "rectangle" },
+      { id: "rect_per", topic: "2d", title: "Rectangle: What is the formula for perimeter?", question: "Rectangle: What is the formula for perimeter?", formula: "P = 2(l + b)", desc: "l = length, b = breadth", hint: "Go around: l + b + l + b.", shape: "rectangle" },
       { id: "trap_area", topic: "2d", title: "Trapezium — area", question: "Trapezium: What is the formula for area?", formula: "A = ½(a + b)h", desc: "a, b = parallel sides, h = height", hint: "Average of parallel sides × height.", shape: "trapezium" },
       { id: "para_area", topic: "2d", title: "Parallelogram — area", question: "Parallelogram: What is the formula for area?", formula: "A = bh", desc: "b = base, h = perpendicular height", hint: "Same as rectangle: base × height.", shape: "parallelogram" },
       { id: "rhom_area", topic: "2d", title: "Rhombus — area", question: "Rhombus: What is the formula for area (using diagonals)?", formula: "A = ½d₁d₂", desc: "d₁, d₂ = diagonals", hint: "Half of diagonal × diagonal.", shape: "rhombus" },
@@ -569,43 +569,60 @@
     let recentIds = [];
     const RECENT_LIMIT = 18;
 
-    // ---------- SOUNDS (gentle) ----------
-    let audioCtx = null;
-    function canUseAudio() {
-      return typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
+    // ---------- SOUNDS (Option C – Media Library URLs; SAME AS MM001/MM002/MM003) ----------
+    const SFX = {
+      correct: "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Correct1.mp3",
+      wrong:   "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Wrong1.mp3",
+      timeup:  "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Timeup1.mp3"
+    };
+
+    const sfxCorrect = new Audio(SFX.correct);
+    const sfxWrong   = new Audio(SFX.wrong);
+    const sfxTimeUp  = new Audio(SFX.timeup);
+
+    [sfxCorrect, sfxWrong, sfxTimeUp].forEach(a => {
+      a.preload = "auto";
+      a.volume = 0.55;
+    });
+
+    // iPad/Safari: unlock audio on first user gesture
+    let audioUnlocked = false;
+    function unlockAudioOnce(){
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+
+      [sfxCorrect, sfxWrong, sfxTimeUp].forEach(a => {
+        try{
+          a.muted = true;
+          const p = a.play();
+          if (p && typeof p.then === "function"){
+            p.then(() => {
+              a.pause();
+              a.currentTime = 0;
+              a.muted = false;
+            }).catch(() => {
+              a.muted = false;
+            });
+          } else {
+            a.muted = false;
+          }
+        } catch(e) {}
+      });
     }
-    function beep(freq, dur, type = "sine", delay = 0, vol = 0.08) {
-      if (!canUseAudio()) return;
-      try {
-        if (!audioCtx) {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          audioCtx = new AC();
-        }
-        const start = audioCtx.currentTime + delay / 1000;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.value = freq;
-        gain.gain.value = vol;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + dur / 1000);
-      } catch (e) {}
+    document.addEventListener("pointerdown", unlockAudioOnce, { once: true });
+    document.addEventListener("touchstart", unlockAudioOnce, { once: true });
+    document.addEventListener("click", unlockAudioOnce, { once: true });
+
+    function safePlay(audioEl){
+      try{
+        audioEl.currentTime = 0;
+        const p = audioEl.play();
+        if (p && typeof p.catch === "function") p.catch(()=>{});
+      }catch(e){}
     }
-    function playCorrectSound() {
-      beep(660, 220, "sine", 0, 0.07);
-      beep(880, 240, "sine", 140, 0.07);
-      beep(1040, 280, "sine", 280, 0.06);
-    }
-    function playWrongSound() {
-      beep(260, 200, "triangle", 0, 0.07);
-      beep(200, 200, "triangle", 160, 0.06);
-    }
-    function playTimeUpSound() {
-      beep(520, 220, "sine", 0, 0.06);
-      beep(400, 260, "sine", 200, 0.06);
-    }
+    function playCorrectSound(){ safePlay(sfxCorrect); }
+    function playWrongSound(){ safePlay(sfxWrong); }
+    function playTimeUpSound(){ safePlay(sfxTimeUp); }
 
     // ---------- CONFETTI ----------
     function shootPopperStream(originX, originY, side, totalCount) {
