@@ -3,16 +3,15 @@
     const container = document.getElementById("shapes-formula-game-container");
     if (!container) return;
 
-    // ---------- HTML ----------
+    // ─── HTML ────────────────────────────────────────────────────────────────
     container.innerHTML = `
       <div class="sf-game">
         <div class="sf-title-row">
           <h2 class="sf-title">
             <span>🧮</span>
-            <span style="color:#ffffff">Game 4 — Shapes & Formula</span>
+            <span style="color:#ffffff">Game 4 — Shapes &amp; Formula</span>
             <span class="sf-tag">MM004</span>
           </h2>
-
           <div class="sf-scoreboard">
             <div class="sf-pill" id="sf-score">Score: 0 / 0</div>
             <div class="sf-pill" id="sf-streak">Streak: 0 🔥</div>
@@ -29,7 +28,6 @@
               <option value="3d">3D Solids only</option>
             </select>
           </div>
-
           <div class="sf-control">
             <label for="sf-mode">Mode:</label>
             <select id="sf-mode">
@@ -37,22 +35,19 @@
               <option value="easy">Easy</option>
               <option value="normal" selected>Normal</option>
               <option value="hard">Hard</option>
+              <option value="insane">Insane 🔥 (Type It!)</option>
             </select>
           </div>
         </div>
 
         <div class="sf-question-box">
           <div class="sf-q-left">
-            <div class="sf-sub" id="sf-instructions">
-              Memorise the formula — pick the correct one. (10 questions per quiz)
-            </div>
-
+            <div class="sf-sub" id="sf-instructions">Memorise the formula — pick the correct one. (10 questions per quiz)</div>
             <div class="sf-question-row">
               <div class="sf-question" id="sf-question">—</div>
               <div class="sf-shape" id="sf-shape" aria-hidden="true"></div>
             </div>
           </div>
-
           <div class="sf-q-right">
             <div class="sf-meta" id="sf-meta">Ready</div>
             <div class="sf-hint" id="sf-hint" aria-live="polite"></div>
@@ -61,9 +56,22 @@
 
         <div class="sf-options" id="sf-options"></div>
 
+        <!-- Insane mode type-in area -->
+        <div class="sf-insane-area" id="sf-insane-area" style="display:none;">
+          <div class="sf-insane-header" id="sf-insane-header">
+            <span class="sf-insane-title">✏️ Type the formula (right-hand side only):</span>
+            <div class="sf-var-legend" id="sf-var-legend"></div>
+          </div>
+          <div class="sf-insane-display" id="sf-insane-display">|</div>
+          <div class="sf-insane-keyboard" id="sf-insane-keyboard"></div>
+          <div class="sf-insane-actions">
+            <button class="sf-btn sf-insane-clear" id="sf-insane-clear">Clear ✕</button>
+            <button class="sf-btn sf-primary sf-insane-submit" id="sf-insane-submit">Submit ✓</button>
+          </div>
+        </div>
+
         <div class="sf-bottom">
           <div class="sf-feedback" id="sf-feedback"></div>
-
           <div class="sf-buttons">
             <button class="sf-btn sf-primary" id="sf-next">Start Quiz ▶</button>
             <button class="sf-btn sf-secondary" id="sf-reset">Reset 🔄</button>
@@ -77,1040 +85,828 @@
       </div>
     `;
 
-    // ---------- CSS ----------
+    // ─── CSS ─────────────────────────────────────────────────────────────────
     const style = document.createElement("style");
     style.innerHTML = `
-      .sf-game{
-        background:#0b1220;
-        color:#e5e7eb;
-        padding:24px;
-        border-radius:18px;
-        max-width:980px;
-        margin:24px auto;
-        position:relative;
-        overflow:hidden;
-        border:1px solid rgba(148,163,184,0.25);
-        box-shadow:0 18px 45px rgba(0,0,0,.55);
+      .sf-game{background:#0b1220;color:#e5e7eb;padding:24px;border-radius:18px;max-width:980px;margin:24px auto;position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.25);box-shadow:0 18px 45px rgba(0,0,0,.55);}
+      .sf-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+      .sf-title{margin:0;display:flex;align-items:center;gap:10px;font-size:1.45rem;}
+      .sf-tag{font-size:.78rem;padding:3px 10px;border-radius:999px;border:1px solid rgba(99,102,241,.45);background:rgba(99,102,241,.12);color:#c7d2fe;}
+      .sf-scoreboard{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+      .sf-pill{font-size:.86rem;padding:5px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.28);background:rgba(15,23,42,.65);}
+      .sf-timer{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12);color:#d1fae5;}
+      .sf-control-row{margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+      .sf-control{display:flex;gap:8px;align-items:center;font-size:.9rem;}
+      .sf-control select{background:#050b16;color:#e5e7eb;border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 12px;font-size:.9rem;outline:none;}
+      .sf-question-box{margin-top:14px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.25);background:rgba(2,6,23,.65);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+      .sf-q-left{min-width:280px;flex:1;}
+      .sf-sub{font-size:.92rem;opacity:.9;margin-bottom:6px;}
+      .sf-question-row{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+      .sf-question{font-size:1.22rem;font-weight:700;letter-spacing:.2px;flex:1;min-width:240px;}
+      .sf-shape{width:200px;max-width:100%;display:flex;justify-content:flex-end;}
+      .sf-shape svg{width:200px;height:auto;display:block;opacity:.95;}
+      .sf-q-right{min-width:260px;}
+      .sf-meta{font-size:.95rem;opacity:.9;}
+      .sf-hint{margin-top:8px;font-size:.92rem;color:#c7d2fe;min-height:18px;}
+      .sf-options{margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+      .sf-option{position:relative;border-radius:14px;border:1px solid rgba(148,163,184,.25);background:rgba(15,23,42,.55);padding:12px 12px 12px 46px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;}
+      .sf-option:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.65);box-shadow:0 10px 24px rgba(0,0,0,.45);}
+      .sf-option.correct{border-color:rgba(34,197,94,.9)!important;box-shadow:0 0 0 2px rgba(34,197,94,.25),0 14px 28px rgba(0,0,0,.45);}
+      .sf-option.wrong{border-color:rgba(239,68,68,.9)!important;box-shadow:0 0 0 2px rgba(239,68,68,.2),0 14px 28px rgba(0,0,0,.45);}
+      .sf-letter{position:absolute;left:12px;top:10px;width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;border:1px solid rgba(148,163,184,.35);background:rgba(2,6,23,.65);color:#e5e7eb;}
+      .sf-opt-formula{font-size:1.08rem;font-weight:700;letter-spacing:.2px;}
+      .sf-desc{margin-top:6px;font-size:.88rem;opacity:.85;line-height:1.25;}
+      .sf-bottom{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+      .sf-feedback{min-height:22px;font-size:1rem;flex:1;}
+      .sf-buttons{display:flex;gap:10px;flex-wrap:wrap;}
+      .sf-btn{border:none;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:700;}
+      .sf-primary{background:linear-gradient(135deg,#6366f1,#22c55e);color:#06101f;}
+      .sf-primary:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(99,102,241,.35);}
+      .sf-secondary{background:rgba(2,6,23,.65);border:1px solid rgba(148,163,184,.35);color:#e5e7eb;}
+      .sf-secondary:hover{background:rgba(15,23,42,.7);}
+      .sf-formula-sheet{margin-top:14px;border-radius:14px;border:1px solid rgba(148,163,184,.25);background:rgba(2,6,23,.45);padding:10px 12px;}
+      .sf-formula-sheet summary{cursor:pointer;font-weight:700;color:#e5e7eb;}
+      .sf-sheet-grid{margin-top:10px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+      .sf-sheet-card{border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.55);border-radius:12px;padding:10px 12px;}
+      .sf-sheet-title{font-weight:800;margin-bottom:6px;}
+      .sf-sheet-line{font-size:.9rem;opacity:.92;line-height:1.28;}
+
+      /* ── Correct-answer reveal ── */
+      .sf-correct-reveal{
+        display:inline-block;margin-top:5px;padding:5px 13px;
+        border-radius:10px;border:1px solid rgba(34,197,94,.55);
+        background:rgba(0,35,15,.65);color:#86efac;font-size:.95rem;font-weight:700;
       }
 
-      .sf-title-row{
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:12px;
-        flex-wrap:wrap;
-      }
-      .sf-title{
-        margin:0;
-        display:flex;
-        align-items:center;
-        gap:10px;
-        font-size:1.45rem;
-      }
-      .sf-tag{
-        font-size:.78rem;
-        padding:3px 10px;
-        border-radius:999px;
-        border:1px solid rgba(99,102,241,0.45);
-        background:rgba(99,102,241,0.12);
-        color:#c7d2fe;
-      }
+      /* ── Insane mode ── */
+      .sf-insane-area{margin-top:14px;border:1px solid rgba(239,68,68,.45);background:rgba(30,8,8,.55);border-radius:16px;padding:16px;}
+      .sf-insane-header{margin-bottom:10px;}
+      .sf-insane-title{font-size:.95rem;color:#fca5a5;font-weight:700;}
+      .sf-var-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+      .sf-var-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);border-radius:8px;padding:3px 10px;font-size:.88rem;color:#fef08a;}
+      .sf-var-chip strong{color:#facc15;font-family:monospace;font-size:1rem;}
+      .sf-insane-display{font-size:1.5rem;font-weight:700;letter-spacing:.5px;min-height:48px;background:rgba(2,6,23,.7);border:1px solid rgba(239,68,68,.5);border-radius:10px;padding:8px 14px;color:#fff;margin-bottom:12px;word-break:break-all;}
+      .sf-insane-display.correct-flash{border-color:rgba(34,197,94,.9);background:rgba(0,30,10,.7);}
+      .sf-insane-display.wrong-flash{border-color:rgba(239,68,68,.9);background:rgba(40,0,0,.7);}
+      .sf-insane-keyboard{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+      .sf-kb-row{display:flex;flex-wrap:wrap;gap:6px;}
+      .sf-key{border:1px solid rgba(148,163,184,.35);background:rgba(15,23,42,.7);color:#e5e7eb;border-radius:9px;padding:7px 12px;font-size:1rem;font-weight:700;cursor:pointer;transition:transform .1s,background .1s;user-select:none;min-width:38px;text-align:center;}
+      .sf-key:hover{background:rgba(99,102,241,.35);transform:translateY(-1px);}
+      .sf-key:active{transform:scale(.94);}
+      .sf-key-special{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.55);color:#c7d2fe;}
+      .sf-key-backspace{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5;}
+      .sf-insane-actions{display:flex;gap:10px;flex-wrap:wrap;}
+      .sf-insane-clear{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45);color:#fca5a5;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:700;}
 
-      .sf-scoreboard{
-        display:flex;
-        gap:8px;
-        align-items:center;
-        flex-wrap:wrap;
-      }
-      .sf-pill{
-        font-size:.86rem;
-        padding:5px 12px;
-        border-radius:999px;
-        border:1px solid rgba(148,163,184,0.28);
-        background:rgba(15,23,42,0.65);
-      }
-      .sf-timer{
-        border-color:rgba(34,197,94,0.35);
-        background:rgba(34,197,94,0.12);
-        color:#d1fae5;
-      }
-
-      .sf-control-row{
-        margin-top:12px;
-        display:flex;
-        gap:12px;
-        flex-wrap:wrap;
-        align-items:center;
-      }
-      .sf-control{
-        display:flex;
-        gap:8px;
-        align-items:center;
-        font-size:.9rem;
-      }
-      .sf-control select{
-        background:#050b16;
-        color:#e5e7eb;
-        border:1px solid rgba(148,163,184,0.35);
-        border-radius:999px;
-        padding:4px 12px;
-        font-size:.9rem;
-        outline:none;
-      }
-
-      .sf-question-box{
-        margin-top:14px;
-        padding:14px;
-        border-radius:14px;
-        border:1px solid rgba(148,163,184,0.25);
-        background:rgba(2,6,23,0.65);
-        display:flex;
-        justify-content:space-between;
-        gap:16px;
-        flex-wrap:wrap;
-      }
-      .sf-q-left{
-        min-width:280px;
-        flex:1;
-      }
-      .sf-sub{
-        font-size:.92rem;
-        opacity:.9;
-        margin-bottom:6px;
-      }
-
-      .sf-question-row{
-        display:flex;
-        gap:14px;
-        align-items:center;
-        justify-content:space-between;
-        flex-wrap:wrap;
-      }
-
-      .sf-question{
-        font-size:1.22rem;
-        font-weight:700;
-        letter-spacing:.2px;
-        flex: 1;
-        min-width: 240px;
-      }
-
-      .sf-shape{
-        width: 170px;
-        max-width: 100%;
-        display:flex;
-        justify-content:flex-end;
-      }
-      .sf-shape svg{
-        width: 170px;
-        height:auto;
-        display:block;
-        opacity: .95;
-      }
-
-      .sf-q-right{
-        min-width:260px;
-      }
-      .sf-meta{
-        font-size:.95rem;
-        opacity:.9;
-      }
-      .sf-hint{
-        margin-top:8px;
-        font-size:.92rem;
-        color:#c7d2fe;
-        min-height:18px;
-      }
-
-      .sf-options{
-        margin-top:14px;
-        display:grid;
-        grid-template-columns:repeat(2,1fr);
-        gap:10px;
-      }
-      .sf-option{
-        position:relative;
-        border-radius:14px;
-        border:1px solid rgba(148,163,184,0.25);
-        background:rgba(15,23,42,0.55);
-        padding:12px 12px 12px 46px;
-        cursor:pointer;
-        transition:transform .12s, border-color .12s, box-shadow .12s;
-      }
-      .sf-option:hover{
-        transform:translateY(-2px);
-        border-color:rgba(99,102,241,0.65);
-        box-shadow:0 10px 24px rgba(0,0,0,.45);
-      }
-      .sf-option.correct{
-        border-color:rgba(34,197,94,0.9) !important;
-        box-shadow:0 0 0 2px rgba(34,197,94,0.25), 0 14px 28px rgba(0,0,0,.45);
-      }
-      .sf-option.wrong{
-        border-color:rgba(239,68,68,0.9) !important;
-        box-shadow:0 0 0 2px rgba(239,68,68,0.2), 0 14px 28px rgba(0,0,0,.45);
-      }
-      .sf-letter{
-        position:absolute;
-        left:12px;
-        top:10px;
-        width:26px;
-        height:26px;
-        border-radius:999px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-weight:800;
-        font-size:.9rem;
-        border:1px solid rgba(148,163,184,0.35);
-        background:rgba(2,6,23,0.65);
-        color:#e5e7eb;
-      }
-      .sf-formula{
-        font-size:1.08rem;
-        font-weight:750;
-        letter-spacing:.2px;
-      }
-      .sf-desc{
-        margin-top:6px;
-        font-size:.88rem;
-        opacity:.85;
-        line-height:1.25;
-      }
-
-      .sf-bottom{
-        margin-top:12px;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:10px;
-        flex-wrap:wrap;
-      }
-      .sf-feedback{
-        min-height:22px;
-        font-size:1rem;
-      }
-      .sf-buttons{
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-      }
-      .sf-btn{
-        border:none;
-        border-radius:999px;
-        padding:8px 16px;
-        cursor:pointer;
-        font-weight:700;
-      }
-      .sf-primary{
-        background:linear-gradient(135deg,#6366f1,#22c55e);
-        color:#06101f;
-      }
-      .sf-primary:hover{
-        transform:translateY(-1px);
-        box-shadow:0 10px 24px rgba(99,102,241,.35);
-      }
-      .sf-secondary{
-        background:rgba(2,6,23,0.65);
-        border:1px solid rgba(148,163,184,0.35);
-        color:#e5e7eb;
-      }
-      .sf-secondary:hover{
-        background:rgba(15,23,42,0.7);
-      }
-
-      .sf-formula-sheet{
-        margin-top:14px;
-        border-radius:14px;
-        border:1px solid rgba(148,163,184,0.25);
-        background:rgba(2,6,23,0.45);
-        padding:10px 12px;
-      }
-      .sf-formula-sheet summary{
-        cursor:pointer;
-        font-weight:700;
-        color:#e5e7eb;
-      }
-      .sf-sheet-grid{
-        margin-top:10px;
-        display:grid;
-        grid-template-columns:repeat(2,1fr);
-        gap:10px;
-      }
-      .sf-sheet-card{
-        border:1px solid rgba(148,163,184,0.22);
-        background:rgba(15,23,42,0.55);
-        border-radius:12px;
-        padding:10px 12px;
-      }
-      .sf-sheet-title{
-        font-weight:800;
-        margin-bottom:6px;
-      }
-      .sf-sheet-line{
-        font-size:.9rem;
-        opacity:.92;
-        line-height:1.28;
-      }
-
-      /* Falling confetti (top rain) */
-      .sf-confetti{
-        position:fixed;
-        z-index:99999;
-        pointer-events:none;
-        animation:sf-confetti-fall 1.8s ease-out forwards;
-        font-size:1.7rem;
-      }
-      @keyframes sf-confetti-fall{
-        0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}
-        10%{opacity:1;}
-        100%{transform:translateY(110vh) rotate(340deg);opacity:0;}
-      }
-
-      /* Party popper stream */
-      .sf-stream{
-        position:fixed;
-        z-index:99999;
-        pointer-events:none;
-        font-size:1.7rem;
-        user-select:none;
-        will-change:transform, opacity;
-      }
+      /* ── Confetti ── */
+      .sf-confetti{position:fixed;z-index:99999;pointer-events:none;animation:sf-fall 1.8s ease-out forwards;font-size:1.7rem;}
+      @keyframes sf-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}10%{opacity:1;}100%{transform:translateY(110vh) rotate(340deg);opacity:0;}}
+      .sf-stream{position:fixed;z-index:99999;pointer-events:none;font-size:1.7rem;user-select:none;will-change:transform,opacity;}
 
       @media(max-width:820px){
         .sf-options{grid-template-columns:1fr;}
         .sf-sheet-grid{grid-template-columns:1fr;}
-        .sf-shape svg{ width: 150px; }
+        .sf-shape svg{width:160px;}
+        .sf-insane-display{font-size:1.2rem;}
       }
     `;
     document.head.appendChild(style);
 
-    // ---------- DATA ----------
-    // 8 options (A–H)
-    const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
-    const emojis = ["🎉", "🎊", "🎈", "✨", "💫", "🌟", "🤩", "💯", "🥇", "🥈", "🥉"];
+    // ─── CONSTANTS ────────────────────────────────────────────────────────────
+    const LETTERS = ["A","B","C","D","E","F","G","H"];
+    const EMOJIS  = ["🎉","🎊","🎈","✨","💫","🌟","🤩","💯","🥇","🥈","🥉"];
+    const OPTIONS_COUNT   = 8;
+    const TOTAL_QUESTIONS = 10;
+    const RECENT_LIMIT    = 18;
 
-    // ---------- SHAPES (SVG) ----------
-    function shapeSVG(shapeKey) {
-      const stroke = "rgba(255,255,255,.88)";
-      const fill = "rgba(255,255,255,.08)";
-      const faint = "rgba(255,255,255,.22)";
+    // ─── SVG DIAGRAMS ─────────────────────────────────────────────────────────
+    // labelMode = true  →  draw algebra labels (yellow) on the shape (Insane mode)
+    function shapeSVG(key, lm) {
+      const S  = "rgba(255,255,255,.88)";   // shape stroke
+      const F  = "rgba(255,255,255,.08)";   // shape fill
+      const FA = "rgba(255,255,255,.22)";   // faint stroke (hidden edges)
+      const LC = "#facc15";                  // label colour
+      const DC = "rgba(250,204,21,.5)";     // dim-line colour
+      const LS = "11";                       // label font-size
 
-      switch (shapeKey) {
-        case "square":
-          return `<svg viewBox="0 0 120 120">
-            <rect x="20" y="20" width="80" height="80" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "rectangle":
-          return `<svg viewBox="0 0 160 120">
-            <rect x="18" y="30" width="124" height="60" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "triangle":
-          return `<svg viewBox="0 0 160 120">
-            <polygon points="20,96 80,24 140,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "trapezium":
-          return `<svg viewBox="0 0 160 120">
-            <polygon points="40,30 120,30 140,96 20,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "parallelogram":
-          return `<svg viewBox="0 0 160 120">
-            <polygon points="40,30 140,30 120,96 20,96" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "rhombus":
-          return `<svg viewBox="0 0 160 120">
-            <polygon points="80,20 140,60 80,100 20,60" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "kite":
-          return `<svg viewBox="0 0 160 120">
-            <polygon points="80,18 125,60 80,104 35,60" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "circle":
-          return `<svg viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="40" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "sector":
-          return `<svg viewBox="0 0 120 120">
-            <path d="M60 60 L60 20 A40 40 0 0 1 98 72 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <circle cx="60" cy="60" r="40" fill="none" stroke="${faint}" stroke-width="2"/>
-          </svg>`;
+      // helper: yellow text label
+      const T = (x,y,t,a) => `<text x="${x}" y="${y}" fill="${LC}" font-size="${LS}" font-weight="700" text-anchor="${a||"middle"}" font-family="sans-serif">${t}</text>`;
+      // helper: dashed yellow dimension line
+      const D = (x1,y1,x2,y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
 
-        // ✅ Updated: Proper-looking square pyramid (isometric base + apex)
-        case "pyramid":
-          return `<svg viewBox="0 0 180 120">
-            <!-- Base (parallelogram) -->
-            <polygon points="45,85 115,85 150,100 80,100"
-              fill="${fill}" stroke="${stroke}" stroke-width="3" />
-            <!-- Back edge (faint for depth) -->
-            <line x1="45" y1="85" x2="80" y2="100" stroke="${faint}" stroke-width="3" />
-            <line x1="115" y1="85" x2="150" y2="100" stroke="${faint}" stroke-width="3" />
-            <!-- Apex -->
-            <circle cx="95" cy="28" r="2.5" fill="${stroke}" />
-            <!-- Edges -->
-            <line x1="95" y1="28" x2="45" y2="85" stroke="${stroke}" stroke-width="3" />
-            <line x1="95" y1="28" x2="115" y2="85" stroke="${stroke}" stroke-width="3" />
-            <line x1="95" y1="28" x2="150" y2="100" stroke="${faint}" stroke-width="3" />
-            <line x1="95" y1="28" x2="80" y2="100" stroke="${stroke}" stroke-width="3" />
-          </svg>`;
+      switch(key) {
 
-        case "cone":
-          return `<svg viewBox="0 0 160 120">
-            <ellipse cx="80" cy="92" rx="52" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <path d="M28 92 L80 18 L132 92" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "cuboid":
-          return `<svg viewBox="0 0 180 120">
-            <path d="M40 42 L110 42 L140 22 L70 22 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <path d="M40 42 L40 92 L110 92 L110 42 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <path d="M110 42 L110 92 L140 72 L140 22 Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-          </svg>`;
-        case "cylinder":
-          return `<svg viewBox="0 0 160 120">
-            <ellipse cx="80" cy="28" rx="46" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <path d="M34 28 L34 88" stroke="${stroke}" stroke-width="3"/>
-            <path d="M126 28 L126 88" stroke="${stroke}" stroke-width="3"/>
-            <ellipse cx="80" cy="88" rx="46" ry="16" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="0.95"/>
-          </svg>`;
-        case "sphere":
-          return `<svg viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="42" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
-            <ellipse cx="60" cy="60" rx="42" ry="16" fill="none" stroke="${faint}" stroke-width="2"/>
-            <ellipse cx="60" cy="60" rx="18" ry="42" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
-          </svg>`;
-        default:
-          return `<svg viewBox="0 0 120 120">
-            <rect x="20" y="20" width="80" height="80" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity=".6"/>
-          </svg>`;
+        case "square": return `<svg viewBox="0 0 150 140">
+          <rect x="20" y="18" width="90" height="90" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(20,11,110,11)}${T(65,9,"l")}
+                <line x1="116" y1="18" x2="116" y2="108" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+                ${T(130,67,"l")}`:``}
+        </svg>`;
+
+        case "rectangle": return `<svg viewBox="0 0 190 120">
+          <rect x="15" y="20" width="140" height="70" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(15,13,155,13)}${T(85,10,"l")}
+                ${D(161,20,161,90)}${T(175,58,"b")}`:``}
+        </svg>`;
+
+        case "triangle": return `<svg viewBox="0 0 190 140">
+          <polygon points="15,115 95,15 175,115" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(15,123,175,123)}${T(95,133,"b")}
+                ${D(95,15,95,115)}${T(110,70,"h")}`:``}
+        </svg>`;
+
+        case "trapezium": return `<svg viewBox="0 0 210 150">
+          <polygon points="50,20 155,20 180,115 20,115" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`
+            ${D(50,12,155,12)}${T(102,9,"a")}
+            ${D(20,125,180,125)}${T(100,136,"b")}
+            <line x1="14" y1="20" x2="14" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+            ${T(5,72,"c","start")}
+            <line x1="186" y1="20" x2="186" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+            ${T(198,72,"d","start")}
+            ${D(160,12,185,12)}${T(185,9,"h","end")}
+            <line x1="185" y1="12" x2="185" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+          `:``}
+        </svg>`;
+
+        case "circle": return `<svg viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="48" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`<line x1="65" y1="65" x2="113" y2="65" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>${T(89,58,"r")}`:``}
+        </svg>`;
+
+        case "sector": return `<svg viewBox="0 0 160 150">
+          <path d="M80 90 L80 25 A65 65 0 0 1 143 115 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <circle cx="80" cy="90" r="65" fill="none" stroke="${FA}" stroke-width="2"/>
+          ${lm?`
+            <line x1="80" y1="90" x2="80" y2="25" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+            <line x1="80" y1="90" x2="143" y2="115" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+            ${T(60,55,"r")}
+            ${T(125,118,"r")}
+            <path d="M80 68 A22 22 0 0 1 101 78" fill="none" stroke="${LC}" stroke-width="2"/>
+            ${T(112,65,"θ")}
+          `:``}
+        </svg>`;
+
+        case "pyramid": return `<svg viewBox="0 0 210 140">
+          <polygon points="55,105 135,105 170,120 90,120" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <line x1="55"  y1="105" x2="90"  y2="120" stroke="${FA}" stroke-width="2.5"/>
+          <line x1="135" y1="105" x2="170" y2="120" stroke="${FA}" stroke-width="2.5"/>
+          <circle cx="112" cy="28" r="2.5" fill="${S}"/>
+          <line x1="112" y1="28" x2="55"  y2="105" stroke="${S}" stroke-width="3"/>
+          <line x1="112" y1="28" x2="135" y2="105" stroke="${S}" stroke-width="3"/>
+          <line x1="112" y1="28" x2="170" y2="120" stroke="${FA}" stroke-width="2.5"/>
+          <line x1="112" y1="28" x2="90"  y2="120" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(112,28,112,112)}${T(124,74,"h")}
+                ${T(105,133,"B = base area")}`:``}
+        </svg>`;
+
+        case "cone": return `<svg viewBox="0 0 200 140">
+          <ellipse cx="100" cy="112" rx="68" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <path d="M32 112 L100 20 L168 112" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(100,112,168,112)}${T(134,128,"r")}
+                ${D(100,20,100,112)}${T(85,70,"h")}
+                <line x1="100" y1="20" x2="168" y2="112" stroke="${LC}" stroke-width="1.2" stroke-dasharray="3,3" opacity=".7"/>
+                ${T(145,58,"l")}`:``}
+        </svg>`;
+
+        case "cuboid": return `<svg viewBox="0 0 210 140">
+          <path d="M30 50 L120 50 L155 25 L65 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <path d="M30 50 L30 110 L120 110 L120 50 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <path d="M120 50 L120 110 L155 85 L155 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(30,117,120,117)}${T(75,128,"l")}
+                ${D(126,50,126,110)}${T(137,83,"h")}
+                ${D(120,110,155,85)}${T(150,106,"b")}`:``}
+        </svg>`;
+
+        case "cylinder": return `<svg viewBox="0 0 190 140">
+          <ellipse cx="95" cy="28" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <line x1="37" y1="28" x2="37" y2="108" stroke="${S}" stroke-width="3"/>
+          <line x1="153" y1="28" x2="153" y2="108" stroke="${S}" stroke-width="3"/>
+          <ellipse cx="95" cy="108" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+          ${lm?`${D(95,28,153,28)}${T(124,20,"r")}
+                ${D(159,28,159,108)}${T(173,72,"h")}`:``}
+        </svg>`;
+
+        case "sphere": return `<svg viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="55" fill="${F}" stroke="${S}" stroke-width="3"/>
+          <ellipse cx="70" cy="70" rx="55" ry="20" fill="none" stroke="${FA}" stroke-width="2"/>
+          <ellipse cx="70" cy="70" rx="22" ry="55" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+          ${lm?`<line x1="70" y1="70" x2="70" y2="15" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+                ${T(53,44,"r")}`:``}
+        </svg>`;
+
+        default: return `<svg viewBox="0 0 120 120">
+          <rect x="20" y="20" width="80" height="80" rx="10" fill="${F}" stroke="${S}" stroke-width="3" opacity=".6"/>
+        </svg>`;
       }
     }
 
-    // ---------- FORMULA DISPLAY (remove giveaways in OPTIONS) ----------
-    function stripLeftSide(formula) {
-      // Remove leading "A = ", "P = ", "V = ", "CSA = ", "SA = ", "L = " (and variations)
-      // Keeps the right-hand expression only.
-      const s = String(formula || "").trim();
-      const m = s.match(/^\s*(A|P|V|CSA|SA|L)\s*=\s*(.+)\s*$/i);
-      return m ? m[2].trim() : s;
-    }
-
-    // We keep formulas in a structured bank so the game can generate distractors intelligently.
-    // NOTE: Width -> Breadth (b)
-    // NOTE: Cylinder volume shown as (π)(r)^2h (no "V =")
+    // ─── FORMULA BANK ─────────────────────────────────────────────────────────
+    // vars: [{s: algebra symbol, n: full word}]  — shown as chips in Insane mode
     const BANK = [
-      // 2D
-      { id: "sq_area", topic: "2d", title: "Square — area", question: "Square: What is the formula for area?", formula: "A = a²", desc: "a = side length", hint: "Square = side × side.", shape: "square" },
-      { id: "sq_per", topic: "2d", title: "Square — perimeter", question: "Square: What is the formula for perimeter?", formula: "P = 4a", desc: "a = side length", hint: "Perimeter = 4 equal sides.", shape: "square" },
-      { id: "rect_area", topic: "2d", title: "Rectangle — area", question: "Rectangle: What is the formula for area?", formula: "A = lb", desc: "l = length, b = breadth", hint: "Rectangle = length × breadth.", shape: "rectangle" },
-      { id: "rect_per", topic: "2d", title: "Rectangle: What is the formula for perimeter?", question: "Rectangle: What is the formula for perimeter?", formula: "P = 2(l + b)", desc: "l = length, b = breadth", hint: "Go around: l + b + l + b.", shape: "rectangle" },
-      { id: "trap_area", topic: "2d", title: "Trapezium — area", question: "Trapezium: What is the formula for area?", formula: "A = ½(a + b)h", desc: "a, b = parallel sides, h = height", hint: "Average of parallel sides × height.", shape: "trapezium" },
-      { id: "para_area", topic: "2d", title: "Parallelogram — area", question: "Parallelogram: What is the formula for area?", formula: "A = bh", desc: "b = base, h = perpendicular height", hint: "Same as rectangle: base × height.", shape: "parallelogram" },
-      { id: "rhom_area", topic: "2d", title: "Rhombus — area", question: "Rhombus: What is the formula for area (using diagonals)?", formula: "A = ½d₁d₂", desc: "d₁, d₂ = diagonals", hint: "Half of diagonal × diagonal.", shape: "rhombus" },
-      { id: "kite_area", topic: "2d", title: "Kite — area", question: "Kite: What is the formula for area?", formula: "A = ½d₁d₂", desc: "d₁, d₂ = diagonals", hint: "Same as rhombus (diagonals).", shape: "kite" },
-      { id: "tri_area", topic: "2d", title: "Triangle — area", question: "Triangle: What is the formula for area?", formula: "A = ½bh", desc: "b = base, h = perpendicular height", hint: "Half of rectangle/parallelogram.", shape: "triangle" },
-      { id: "sector_area", topic: "2d", title: "Sector — area", question: "Circle sector: What is the formula for area (θ in degrees)?", formula: "A = (θ/360)πr²", desc: "θ = central angle (°), r = radius", hint: "Fraction of full circle area.", shape: "sector" },
-      { id: "sector_arc", topic: "2d", title: "Sector — arc length", question: "Circle sector: What is the formula for arc length (θ in degrees)?", formula: "L = (θ/360)2πr", desc: "θ = central angle (°), r = radius", hint: "Fraction of full circumference.", shape: "sector" },
+      // ── 2D ──
+      {id:"sq_area",    topic:"2d", title:"Square — area",
+       question:"Square: What is the formula for area?",
+       formula:"A = l²",            desc:"l = side length",
+       shape:"square",   vars:[{s:"l",n:"Side length"}]},
 
-      // 3D
-      { id: "pyr_vol", topic: "3d", title: "Pyramid — volume", question: "Pyramid (any base): What is the formula for volume?", formula: "V = ⅓(Bh)", desc: "B = base area, h = perpendicular height", hint: "Pyramid = 1/3 of prism with same base & height.", shape: "pyramid" },
-      { id: "cone_vol", topic: "3d", title: "Cone — volume", question: "Cone: What is the formula for volume?", formula: "V = ⅓πr²h", desc: "r = radius, h = perpendicular height", hint: "Cone = 1/3 of cylinder.", shape: "cone" },
-      { id: "cone_csa", topic: "3d", title: "Cone — curved surface area", question: "Cone: What is the formula for curved surface area?", formula: "CSA = πrl", desc: "r = radius, l = slant height", hint: "Cone side = π × r × slant height.", shape: "cone" },
-      { id: "cuboid_vol", topic: "3d", title: "Cuboid — volume", question: "Cuboid: What is the formula for volume?", formula: "V = lbh", desc: "l = length, b = breadth, h = height", hint: "Three dimensions multiplied.", shape: "cuboid" },
-      { id: "cuboid_sa", topic: "3d", title: "Cuboid — surface area", question: "Cuboid: What is the formula for total surface area?", formula: "SA = 2(lb + lh + bh)", desc: "l, b, h are dimensions", hint: "Two of each face area.", shape: "cuboid" },
-      { id: "cyl_vol", topic: "3d", title: "Cylinder — volume", question: "Cylinder: What is the formula for volume?", formula: "(π)(r)^2h", desc: "r = radius, h = height", hint: "Base area × height.", shape: "cylinder" },
-      { id: "cyl_csa", topic: "3d", title: "Cylinder — curved surface area", question: "Cylinder: What is the formula for curved surface area?", formula: "CSA = 2πrh", desc: "r = radius, h = height", hint: "Circumference × height.", shape: "cylinder" },
-      { id: "sphere_vol", topic: "3d", title: "Sphere — volume", question: "Sphere: What is the formula for volume?", formula: "V = 4/3 πr³", desc: "r = radius", hint: "4/3 × π × r³.", shape: "sphere" },
-      { id: "sphere_sa", topic: "3d", title: "Sphere — surface area", question: "Sphere: What is the formula for surface area?", formula: "SA = 4πr²", desc: "r = radius", hint: "4 × area of great circle.", shape: "sphere" },
+      {id:"sq_per",     topic:"2d", title:"Square — perimeter",
+       question:"Square: What is the formula for perimeter?",
+       formula:"P = 4l",            desc:"l = side length",
+       shape:"square",   vars:[{s:"l",n:"Side length"}]},
+
+      {id:"rect_area",  topic:"2d", title:"Rectangle — area",
+       question:"Rectangle: What is the formula for area?",
+       formula:"A = lb",            desc:"l = length, b = breadth",
+       shape:"rectangle",vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"}]},
+
+      {id:"rect_per",   topic:"2d", title:"Rectangle — perimeter",
+       question:"Rectangle: What is the formula for perimeter?",
+       formula:"P = 2(l + b)",      desc:"l = length, b = breadth",
+       shape:"rectangle",vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"}]},
+
+      {id:"trap_area",  topic:"2d", title:"Trapezium — area",
+       question:"Trapezium: What is the formula for area?",
+       formula:"A = ½(a + b)h",     desc:"a, b = parallel sides, h = height",
+       shape:"trapezium",vars:[{s:"a",n:"Top side"},{s:"b",n:"Bottom side"},{s:"h",n:"Height"}]},
+
+      {id:"tri_area",   topic:"2d", title:"Triangle — area",
+       question:"Triangle: What is the formula for area?",
+       formula:"A = ½bh",           desc:"b = base, h = height",
+       shape:"triangle", vars:[{s:"b",n:"Base"},{s:"h",n:"Height"}]},
+
+      {id:"sector_area",topic:"2d", title:"Sector — area",
+       question:"Circle sector: What is the formula for area (θ in degrees)?",
+       formula:"A = (θ/360)πr²",    desc:"θ = central angle (°), r = radius",
+       shape:"sector",   vars:[{s:"r",n:"Radius"},{s:"θ",n:"Angle (°)"}]},
+
+      {id:"sector_arc", topic:"2d", title:"Sector — arc length",
+       question:"Circle sector: What is the formula for arc length (θ in degrees)?",
+       formula:"L = (θ/360)2πr",    desc:"θ = central angle (°), r = radius",
+       shape:"sector",   vars:[{s:"r",n:"Radius"},{s:"θ",n:"Angle (°)"}]},
+
+      // ── 3D ──
+      {id:"pyr_vol",    topic:"3d", title:"Pyramid — volume",
+       question:"Pyramid (any base): What is the formula for volume?",
+       formula:"V = ⅓Bh",           desc:"B = base area, h = height",
+       shape:"pyramid",  vars:[{s:"B",n:"Base area"},{s:"h",n:"Height"}]},
+
+      {id:"cone_vol",   topic:"3d", title:"Cone — volume",
+       question:"Cone: What is the formula for volume?",
+       formula:"V = ⅓πr²h",         desc:"r = radius, h = height",
+       shape:"cone",     vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
+
+      {id:"cone_csa",   topic:"3d", title:"Cone — curved surface area",
+       question:"Cone: What is the formula for curved surface area?",
+       formula:"CSA = πrl",          desc:"r = radius, l = slant height",
+       shape:"cone",     vars:[{s:"r",n:"Radius"},{s:"l",n:"Slant height"}]},
+
+      {id:"cuboid_vol", topic:"3d", title:"Cuboid — volume",
+       question:"Cuboid: What is the formula for volume?",
+       formula:"V = lbh",            desc:"l = length, b = breadth, h = height",
+       shape:"cuboid",   vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"},{s:"h",n:"Height"}]},
+
+      {id:"cuboid_sa",  topic:"3d", title:"Cuboid — surface area",
+       question:"Cuboid: What is the formula for total surface area?",
+       formula:"SA = 2(lb + lh + bh)", desc:"l, b, h = dimensions",
+       shape:"cuboid",   vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"},{s:"h",n:"Height"}]},
+
+      {id:"cyl_vol",    topic:"3d", title:"Cylinder — volume",
+       question:"Cylinder: What is the formula for volume?",
+       formula:"V = πr²h",           desc:"r = radius, h = height",
+       shape:"cylinder", vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
+
+      {id:"cyl_csa",    topic:"3d", title:"Cylinder — curved surface area",
+       question:"Cylinder: What is the formula for curved surface area?",
+       formula:"CSA = 2πrh",         desc:"r = radius, h = height",
+       shape:"cylinder", vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
+
+      {id:"sphere_vol", topic:"3d", title:"Sphere — volume",
+       question:"Sphere: What is the formula for volume?",
+       formula:"V = 4/3 πr³",        desc:"r = radius",
+       shape:"sphere",   vars:[{s:"r",n:"Radius"}]},
+
+      {id:"sphere_sa",  topic:"3d", title:"Sphere — surface area",
+       question:"Sphere: What is the formula for surface area?",
+       formula:"SA = 4πr²",          desc:"r = radius",
+       shape:"sphere",   vars:[{s:"r",n:"Radius"}]},
     ];
 
-    const DIFF = {
-      warmup: { time: 0 },
-      easy: { time: 60 },
-      normal: { time: 45 },
-      hard: { time: 30 },
+    // ─── INSANE ACCEPTED ANSWERS ──────────────────────────────────────────────
+    const ACCEPTED = {
+      sq_area:    ["l²","l^2","l*l","ll"],
+      sq_per:     ["4l"],
+      rect_area:  ["lb","l*b","bl","b*l"],
+      rect_per:   ["2(l+b)","2(b+l)","2l+2b","2b+2l"],
+      trap_area:  ["½(a+b)h","1/2(a+b)h","(a+b)h/2","(a+b)/2*h","0.5(a+b)h"],
+      tri_area:   ["½bh","1/2bh","bh/2","0.5bh"],
+      sector_area:["(θ/360)πr²","(θ/360)pir²","(θ/360)πr^2","(θ/360)pir^2",
+                   "(theta/360)πr²","(theta/360)pir^2",
+                   "πr²(θ/360)","pir²(θ/360)","πr^2(θ/360)",
+                   "πr²*θ÷360","pir²*θ÷360","πr^2*θ÷360",
+                   "πr²θ÷360","pir²θ÷360","πr^2θ÷360",
+                   "πr²*θ/360","pir²*θ/360","πr^2*θ/360",
+                   "πr²θ/360","pir²θ/360","πr^2θ/360",
+                   "θ/360*πr²","θ/360πr²","θ÷360*πr²","θ÷360πr²"],
+      sector_arc: ["(θ/360)2πr","(θ/360)2pir","2πr(θ/360)","2pir(θ/360)",
+                   "(theta/360)2πr","(theta/360)2pir",
+                   "θ÷360*2πr","2πr*θ÷360","2πrθ÷360","2pirθ÷360",
+                   "θ/360*2πr","2πr*θ/360","2πrθ/360","2pirθ/360"],
+      pyr_vol:    ["⅓Bh","1/3Bh","⅓(Bh)","1/3(Bh)","Bh/3"],
+      cone_vol:   ["⅓πr²h","1/3πr²h","⅓pir²h","1/3pir²h",
+                   "⅓πr^2h","1/3πr^2h","πr²h/3","pir²h/3"],
+      cone_csa:   ["πrl","pirl"],
+      cuboid_vol: ["lbh","l*b*h","lhb","l*h*b","blh","b*l*h","bhl","b*h*l","hlb","h*l*b","hbl","h*b*l"],
+      cuboid_sa:  ["2(lb+lh+bh)","2(lb+bh+lh)","2(lh+hb+lb)","2(lh+lb+hb)",
+                   "2(bh+lb+lh)","2(bh+lh+lb)","2(hb+bl+hl)","2(hl+hb+lb)",
+                   "2lb+2lh+2bh","2lh+2hb+2lb","2bh+2lb+2lh"],
+      cyl_vol:    ["πr²h","pir²h","πr^2h","pir^2h"],
+      cyl_csa:    ["2πrh","2pirh"],
+      sphere_vol: ["4/3πr³","4/3pir³","4/3πr^3","4/3pir^3",
+                   "(4/3)πr³","(4/3)pir³","(4πr³)/3","4πr³/3"],
+      sphere_sa:  ["4πr²","4pir²","4πr^2","4pir^2"],
     };
 
-    // ---------- ELEMENTS ----------
-    const topicSel = document.getElementById("sf-topic");
-    const modeSel = document.getElementById("sf-mode");
+    // normalise user input & accepted answers before comparing
+    function norm(s) {
+      return String(s).toLowerCase()
+        .replace(/\s+/g,"")
+        .replace(/π/g,"pi").replace(/⅓/g,"1/3").replace(/½/g,"1/2")
+        .replace(/÷/g,"/").replace(/×/g,"*")
+        .replace(/\*+/g,"*")
+        .replace(/²/g,"^2").replace(/³/g,"^3")
+        .replace(/([a-zθ])2(?![0-9])/g,"$1^2")
+        .replace(/([a-zθ])3(?![0-9])/g,"$1^3")
+        .replace(/\*/g,"");
+    }
+    function checkInsane(id, input) {
+      return (ACCEPTED[id]||[]).some(a => norm(a) === norm(input));
+    }
 
-    const scoreEl = document.getElementById("sf-score");
-    const streakEl = document.getElementById("sf-streak");
-    const timerEl = document.getElementById("sf-timer");
+    // ─── KEYBOARD ROWS ────────────────────────────────────────────────────────
+    const KB = [
+      [{l:"1",v:"1"},{l:"2",v:"2"},{l:"3",v:"3"},{l:"4",v:"4"},
+       {l:"5",v:"5"},{l:"6",v:"6"},{l:"7",v:"7"},{l:"8",v:"8"},
+       {l:"9",v:"9"},{l:"0",v:"0"},{l:".",v:"."},{l:"/",v:"/"},
+       {l:"(",v:"("},{l:")",v:")"},{l:"⌫",v:"BS",c:"sf-key-backspace"}],
+      [{l:"a",v:"a"},{l:"b",v:"b"},{l:"h",v:"h"},{l:"l",v:"l"},
+       {l:"r",v:"r"},{l:"θ",v:"θ",c:"sf-key-special"},
+       {l:"B",v:"B"},{l:"d₁",v:"d₁",c:"sf-key-special"},
+       {l:"d₂",v:"d₂",c:"sf-key-special"}],
+      [{l:"π",v:"π",c:"sf-key-special"},{l:"²",v:"²",c:"sf-key-special"},
+       {l:"³",v:"³",c:"sf-key-special"},{l:"½",v:"½",c:"sf-key-special"},
+       {l:"⅓",v:"⅓",c:"sf-key-special"},{l:"×",v:"×",c:"sf-key-special"},
+       {l:"÷",v:"÷",c:"sf-key-special"},{l:"+",v:"+"},{l:"-",v:"-"}],
+    ];
 
-    const questionEl = document.getElementById("sf-question");
-    const shapeEl = document.getElementById("sf-shape");
-    const metaEl = document.getElementById("sf-meta");
-    const hintEl = document.getElementById("sf-hint"); // kept but no hints shown
-    const feedbackEl = document.getElementById("sf-feedback");
-    const optionsEl = document.getElementById("sf-options");
+    // ─── DIFFICULTY ───────────────────────────────────────────────────────────
+    const DIFF = {warmup:{t:0},easy:{t:60},normal:{t:45},hard:{t:30},insane:{t:60}};
 
-    const nextBtn = document.getElementById("sf-next");
-    const resetBtn = document.getElementById("sf-reset");
+    // ─── DOM REFS ─────────────────────────────────────────────────────────────
+    const $  = id => document.getElementById(id);
+    const topicSel  = $("sf-topic"),  modeSel    = $("sf-mode");
+    const scoreEl   = $("sf-score"),  streakEl   = $("sf-streak"), timerEl = $("sf-timer");
+    const questionEl= $("sf-question"),shapeEl   = $("sf-shape");
+    const metaEl    = $("sf-meta"),   hintEl     = $("sf-hint");
+    const feedbackEl= $("sf-feedback"),optionsEl = $("sf-options");
+    const insaneArea= $("sf-insane-area"), insaneDisp=$("sf-insane-display");
+    const insaneKbEl= $("sf-insane-keyboard"), varLegendEl=$("sf-var-legend");
+    const insaneClear=$("sf-insane-clear"),  insaneSubmit=$("sf-insane-submit");
+    const nextBtn   = $("sf-next"),   resetBtn   = $("sf-reset");
+    const fmDetails = $("sf-formula-details"), fmSummary=$("sf-formula-summary");
 
-    const formulaDetails = document.getElementById("sf-formula-details");
-    const formulaSummary = document.getElementById("sf-formula-summary");
+    // ─── STATE ────────────────────────────────────────────────────────────────
+    let inProgress=false, locked=false, attempted=false;
+    let score=0, total=0, streak=0, qIdx=0;
+    let timerID=null, timeLeft=0;
+    let current=null, recentIds=[], insaneInput="";
 
-    // ---------- STATE ----------
-    const TOTAL_QUESTIONS = 10;
-    const OPTIONS_COUNT = 8; // ✅ 4 more options
-    let inProgress = false;
-    let locked = false;
-    let attemptedThisQ = false;
+    const isWarmup = () => modeSel.value === "warmup";
+    const isInsane = () => modeSel.value === "insane";
 
-    let score = 0;
-    let total = 0;
-    let streak = 0;
-    let qIndex = 0;
-
-    let timerId = null;
-    let timeLeft = 0;
-
-    let current = null;
-    let recentIds = [];
-    const RECENT_LIMIT = 18;
-
-    // ---------- SOUNDS (Option C – Media Library URLs; SAME AS MM001/MM002/MM003) ----------
+    // ─── AUDIO ────────────────────────────────────────────────────────────────
     const SFX = {
-      correct: "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Correct1.mp3",
-      wrong:   "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Wrong1.mp3",
-      timeup:  "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Timeup1.mp3"
+      ok:  "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Correct1.mp3",
+      bad: "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Wrong1.mp3",
+      tup: "https://scholarspace.academy/wp-content/uploads/2026/01/Games-Timeup1.mp3",
     };
-
-    const sfxCorrect = new Audio(SFX.correct);
-    const sfxWrong   = new Audio(SFX.wrong);
-    const sfxTimeUp  = new Audio(SFX.timeup);
-
-    [sfxCorrect, sfxWrong, sfxTimeUp].forEach(a => {
-      a.preload = "auto";
-      a.volume = 0.55;
-    });
-
-    // iPad/Safari: unlock audio on first user gesture
-    let audioUnlocked = false;
-    function unlockAudioOnce(){
-      if (audioUnlocked) return;
-      audioUnlocked = true;
-
-      [sfxCorrect, sfxWrong, sfxTimeUp].forEach(a => {
-        try{
-          a.muted = true;
-          const p = a.play();
-          if (p && typeof p.then === "function"){
-            p.then(() => {
-              a.pause();
-              a.currentTime = 0;
-              a.muted = false;
-            }).catch(() => {
-              a.muted = false;
-            });
-          } else {
-            a.muted = false;
-          }
-        } catch(e) {}
+    const aOk=new Audio(SFX.ok), aBad=new Audio(SFX.bad), aTup=new Audio(SFX.tup);
+    [aOk,aBad,aTup].forEach(a=>{a.preload="auto";a.volume=0.55;});
+    let audioReady=false;
+    function unlockAudio(){
+      if(audioReady)return; audioReady=true;
+      [aOk,aBad,aTup].forEach(a=>{
+        try{a.muted=true;const p=a.play();
+          if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;a.muted=false;}).catch(()=>{a.muted=false;});
+          else a.muted=false;
+        }catch(e){}
       });
     }
-    document.addEventListener("pointerdown", unlockAudioOnce, { once: true });
-    document.addEventListener("touchstart", unlockAudioOnce, { once: true });
-    document.addEventListener("click", unlockAudioOnce, { once: true });
+    ["pointerdown","touchstart","click"].forEach(e=>document.addEventListener(e,unlockAudio,{once:true}));
+    function play(a){try{a.currentTime=0;const p=a.play();if(p&&p.catch)p.catch(()=>{});}catch(e){}}
 
-    function safePlay(audioEl){
-      try{
-        audioEl.currentTime = 0;
-        const p = audioEl.play();
-        if (p && typeof p.catch === "function") p.catch(()=>{});
-      }catch(e){}
-    }
-    function playCorrectSound(){ safePlay(sfxCorrect); }
-    function playWrongSound(){ safePlay(sfxWrong); }
-    function playTimeUpSound(){ safePlay(sfxTimeUp); }
-
-    // ---------- CONFETTI ----------
-    function shootPopperStream(originX, originY, side, totalCount) {
-      let count = 0;
-      const interval = setInterval(() => {
-        if (count >= totalCount) {
-          clearInterval(interval);
-          return;
-        }
-
-        const span = document.createElement("span");
-        span.className = "sf-stream";
-        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-        document.body.appendChild(span);
-
-        const startX = originX + (Math.random() - 0.5) * 16;
-        const startY = originY + (Math.random() - 0.5) * 16;
-
-        const screenW = window.innerWidth || 1200;
-        const screenH = window.innerHeight || 800;
-
-        const targetX = screenW * 0.5 + (Math.random() - 0.5) * screenW * 0.25;
-        const targetY = screenH * 0.32 + (Math.random() - 0.5) * screenH * 0.12;
-
-        const controlX =
-          side === "left"
-            ? screenW * 0.28 + Math.random() * screenW * 0.12
-            : screenW * 0.72 - Math.random() * screenW * 0.12;
-        const controlY = screenH * 0.12 + Math.random() * screenH * 0.1;
-
-        const startTime = performance.now();
-        const duration = 900 + Math.random() * 350;
-
-        function animate(now) {
-          const elapsed = now - startTime;
-          const tRaw = elapsed / duration;
-
-          if (tRaw >= 1) {
-            span.remove();
-            return;
-          }
-
-          const t = 1 - Math.pow(1 - tRaw, 2);
-          const u = 1 - t;
-
-          const x = u * u * startX + 2 * u * t * controlX + t * t * targetX;
-          const y = u * u * startY + 2 * u * t * controlY + t * t * targetY;
-
-          span.style.left = x + "px";
-          span.style.top = y + "px";
-
-          let opacity;
-          if (t < 0.55) opacity = 1;
-          else opacity = 1 - (t - 0.55) / 0.45;
-
-          span.style.opacity = String(Math.max(0, Math.min(1, opacity)));
-          requestAnimationFrame(animate);
-        }
-
-        span.style.opacity = "1";
-        requestAnimationFrame(animate);
-
-        count++;
-      }, 24);
-    }
-
-    function launchConfetti(intensity) {
-      const base = 30;
-      const factor = intensity || 1;
-      const count = Math.max(12, Math.round(base * factor));
-
-      for (let i = 0; i < count; i++) {
-        const span = document.createElement("span");
-        span.className = "sf-confetti";
-        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-        span.style.left = Math.random() * 100 + "vw";
-        span.style.top = Math.random() * 5 - 10 + "vh";
-        span.style.animationDelay = Math.random() * 0.7 + "s";
-        span.style.animationDuration = 1.4 + Math.random() * 0.8 + "s";
-        document.body.appendChild(span);
-        setTimeout(() => span.remove(), 2200);
+    // ─── CONFETTI ─────────────────────────────────────────────────────────────
+    function confetti(intensity){
+      const n=Math.max(12,Math.round(30*(intensity||1)));
+      for(let i=0;i<n;i++){
+        const s=document.createElement("span");
+        s.className="sf-confetti";
+        s.textContent=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+        s.style.left=Math.random()*100+"vw";
+        s.style.top=Math.random()*5-10+"vh";
+        s.style.animationDelay=Math.random()*.7+"s";
+        s.style.animationDuration=1.4+Math.random()*.8+"s";
+        document.body.appendChild(s);
+        setTimeout(()=>s.remove(),2200);
       }
-
-      const h = window.innerHeight || 800;
-      const w = window.innerWidth || 1200;
-      const totalPerSide = 20 + Math.round(6 * factor);
-      shootPopperStream(80, h - 80, "left", totalPerSide);
-      shootPopperStream(w - 80, h - 80, "right", totalPerSide);
+      const W=window.innerWidth||1200, H=window.innerHeight||800;
+      const pop=(ox,oy,side,cnt)=>{
+        let c=0;
+        const iv=setInterval(()=>{
+          if(c>=cnt){clearInterval(iv);return;}
+          const sp=document.createElement("span");
+          sp.className="sf-stream";
+          sp.textContent=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+          document.body.appendChild(sp);
+          const sx=ox+(Math.random()-.5)*16, sy=oy+(Math.random()-.5)*16;
+          const tx=W*.5+(Math.random()-.5)*W*.25, ty=H*.32+(Math.random()-.5)*H*.12;
+          const cx=side==="left"?W*.28+Math.random()*W*.12:W*.72-Math.random()*W*.12;
+          const cy=H*.12+Math.random()*H*.1;
+          const t0=performance.now(), dur=900+Math.random()*350;
+          (function anim(now){
+            const tr=(now-t0)/dur; if(tr>=1){sp.remove();return;}
+            const t=1-Math.pow(1-tr,2),u=1-t;
+            sp.style.left=u*u*sx+2*u*t*cx+t*t*tx+"px";
+            sp.style.top =u*u*sy+2*u*t*cy+t*t*ty+"px";
+            sp.style.opacity=String(Math.max(0,t<.55?1:1-(t-.55)/.45));
+            requestAnimationFrame(anim);
+          })(performance.now());
+          c++;
+        },24);
+      };
+      const tps=20+Math.round(6*(intensity||1));
+      pop(80,H-80,"left",tps); pop(W-80,H-80,"right",tps);
     }
 
-    // ---------- HELPERS ----------
-    function getModeCfg() {
-      return DIFF[modeSel.value] || DIFF.normal;
+    // ─── SCORE / TIMER ────────────────────────────────────────────────────────
+    function updateScore(){
+      scoreEl.textContent=`Score: ${score} / ${total}`;
+      streakEl.textContent=`Streak: ${streak} 🔥`;
     }
-    function isWarmup() {
-      return modeSel.value === "warmup";
-    }
-    function updateScore() {
-      scoreEl.textContent = `Score: ${score} / ${total}`;
-      streakEl.textContent = `Streak: ${streak} 🔥`;
-    }
-    function stopTimer() {
-      if (timerId) clearInterval(timerId);
-      timerId = null;
-    }
-    function startTimer() {
+    function stopTimer(){if(timerID)clearInterval(timerID);timerID=null;}
+    function startTimer(){
       stopTimer();
-      const cfg = getModeCfg();
-      timeLeft = cfg.time;
-
-      if (isWarmup() || cfg.time <= 0) {
-        timerEl.textContent = "☕ Warm-Up (No Timer)";
-        return;
-      }
-
-      timerEl.textContent = `⏱ ${timeLeft}s`;
-      timerId = setInterval(() => {
+      const t=(DIFF[modeSel.value]||DIFF.normal).t;
+      timeLeft=t;
+      if(isWarmup()||t<=0){timerEl.textContent="☕ Warm-Up (No Timer)";return;}
+      timerEl.textContent=`⏱ ${t}s`;
+      timerID=setInterval(()=>{
         timeLeft--;
-        if (timeLeft <= 0) {
-          timeLeft = 0;
-          timerEl.textContent = "⏱ 0s";
-          stopTimer();
-          timeUp();
-        } else {
-          timerEl.textContent = `⏱ ${timeLeft}s`;
-        }
-      }, 1000);
+        timerEl.textContent=`⏱ ${Math.max(0,timeLeft)}s`;
+        if(timeLeft<=0){stopTimer();onTimeUp();}
+      },1000);
+    }
+    function onTimeUp(){
+      if(locked||isWarmup()||!inProgress)return;
+      feedbackEl.textContent=isInsane()
+        ?"⏰ Time's up! Submit now for 0.5 pts."
+        :"⏰ Time's up! You can still answer for 0.5 pts.";
+      play(aTup);
     }
 
-    function timeUp() {
-      if (locked || isWarmup() || !inProgress) return;
-      locked = false;
-      feedbackEl.textContent = "⏰ Time’s up! You can still answer for 0.5 points.";
-      playTimeUpSound();
+    // ─── POOL / PICKING ───────────────────────────────────────────────────────
+    function pool(){
+      const v=topicSel.value;
+      return v==="2d"?BANK.filter(x=>x.topic==="2d"):
+             v==="3d"?BANK.filter(x=>x.topic==="3d"):BANK.slice();
+    }
+    function pickQ(){
+      const p=pool();
+      for(let i=0;i<60;i++){const q=p[Math.floor(Math.random()*p.length)];if(!recentIds.includes(q.id))return q;}
+      return p[Math.floor(Math.random()*p.length)];
+    }
+    function buildOpts(correct){
+      const opts=[correct], seen=new Set([correct.id]);
+      const topic=BANK.filter(x=>x.topic===correct.topic);
+      function add(src){for(let i=0;i<400&&opts.length<OPTIONS_COUNT;i++){
+        const c=src[Math.floor(Math.random()*src.length)];
+        if(!seen.has(c.id)&&c.formula!==correct.formula){opts.push(c);seen.add(c.id);}
+      }}
+      add(topic); add(BANK);
+      for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+      return opts.slice(0,OPTIONS_COUNT);
+    }
+    function stripLHS(f){
+      const m=String(f||"").trim().match(/^\s*(A|P|V|CSA|SA|L)\s*=\s*(.+)\s*$/i);
+      return m?m[2].trim():String(f||"").trim();
     }
 
-    function pickPool() {
-      const t = topicSel.value;
-      if (t === "2d") return BANK.filter((x) => x.topic === "2d");
-      if (t === "3d") return BANK.filter((x) => x.topic === "3d");
-      return BANK.slice();
-    }
-
-    function pickQuestion() {
-      const pool = pickPool();
-      for (let tries = 0; tries < 60; tries++) {
-        const q = pool[Math.floor(Math.random() * pool.length)];
-        if (!recentIds.includes(q.id)) return q;
-      }
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    function buildOptions(correct) {
-      const opts = [correct];
-      const seen = new Set([correct.id]);
-
-      const topicPool = BANK.filter((x) => x.topic === correct.topic);
-      const fallbackPool = BANK;
-
-      function addFrom(pool) {
-        for (let tries = 0; tries < 400 && opts.length < OPTIONS_COUNT; tries++) {
-          const cand = pool[Math.floor(Math.random() * pool.length)];
-          if (!seen.has(cand.id) && cand.formula !== correct.formula) {
-            opts.push(cand);
-            seen.add(cand.id);
-          }
-        }
-      }
-
-      addFrom(topicPool);
-      addFrom(fallbackPool);
-
-      // Shuffle
-      for (let i = opts.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [opts[i], opts[j]] = [opts[j], opts[i]];
-      }
-
-      return opts.slice(0, OPTIONS_COUNT);
-    }
-
-    function renderFormulaSheet() {
-      const sheet = document.getElementById("sf-sheet");
-      if (!sheet) return;
-      sheet.innerHTML = "";
-
-      const twoD = BANK.filter((x) => x.topic === "2d");
-      const threeD = BANK.filter((x) => x.topic === "3d");
-
-      function addSection(title, items) {
-        const card = document.createElement("div");
-        card.className = "sf-sheet-card";
-        card.innerHTML = `<div class="sf-sheet-title">${title}</div>`;
-        items.forEach((it) => {
-          const line = document.createElement("div");
-          line.className = "sf-sheet-line";
-          // Formula sheet keeps full formula (revision purpose)
-          line.textContent = `${it.title}: ${it.formula}`;
-          card.appendChild(line);
+    // ─── INSANE KEYBOARD ─────────────────────────────────────────────────────
+    function buildKeyboard(){
+      insaneKbEl.innerHTML="";
+      KB.forEach(row=>{
+        const div=document.createElement("div");
+        div.className="sf-kb-row";
+        row.forEach(k=>{
+          const btn=document.createElement("button");
+          btn.type="button";
+          btn.className="sf-key"+(k.c?" "+k.c:"");
+          btn.textContent=k.l;
+          btn.addEventListener("click",()=>{
+            if(k.v==="BS")insaneInput=insaneInput.slice(0,-1);
+            else insaneInput+=k.v;
+            renderInsaneDisplay();
+          });
+          div.appendChild(btn);
         });
-        sheet.appendChild(card);
-      }
-
-      addSection("2D Shapes", twoD);
-      addSection("3D Solids", threeD);
-    }
-
-    function closeFormulaSheet() {
-      if (formulaDetails) formulaDetails.open = false;
-    }
-
-    function applyFormulaPenalty() {
-      if (!inProgress) return;
-      if (isWarmup()) return;
-
-      score = score - 0.5;
-      updateScore();
-    }
-
-    // ---------- GAME FLOW ----------
-    function startQuiz() {
-      score = 0;
-      total = 0;
-      streak = 0;
-      qIndex = 0;
-      inProgress = true;
-      locked = false;
-      attemptedThisQ = false;
-
-      recentIds = [];
-      feedbackEl.textContent = "";
-      hintEl.textContent = ""; // no memory hints
-      updateScore();
-
-      topicSel.disabled = true;
-      modeSel.disabled = true;
-
-      nextBtn.textContent = "Next Question ▶";
-      nextBtn.disabled = true; // cannot skip; enabled only after attempt
-
-      closeFormulaSheet();
-      nextQuestion();
-    }
-
-    function endQuiz() {
-      stopTimer();
-      inProgress = false;
-      locked = true;
-      attemptedThisQ = false;
-
-      topicSel.disabled = false;
-      modeSel.disabled = false;
-
-      metaEl.textContent = `Quiz finished (${TOTAL_QUESTIONS} questions)`;
-      questionEl.textContent = "—";
-      shapeEl.innerHTML = "";
-      hintEl.textContent = "";
-      optionsEl.innerHTML = "";
-      timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
-
-      feedbackEl.textContent = isWarmup()
-        ? "✅ Warm-Up complete! (No score recorded.)"
-        : `✅ Quiz complete! Final score: ${score} / ${total}`;
-
-      nextBtn.textContent = "Restart Quiz ↻";
-      nextBtn.disabled = false;
-
-      closeFormulaSheet();
-    }
-
-    function resetQuiz() {
-      stopTimer();
-      inProgress = false;
-      locked = false;
-      attemptedThisQ = false;
-
-      score = 0;
-      total = 0;
-      streak = 0;
-      qIndex = 0;
-      recentIds = [];
-
-      topicSel.disabled = false;
-      modeSel.disabled = false;
-
-      updateScore();
-      metaEl.textContent = "Ready";
-      questionEl.textContent = "—";
-      shapeEl.innerHTML = "";
-      hintEl.textContent = "";
-      optionsEl.innerHTML = "";
-      timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
-      feedbackEl.textContent = "Choose your topic + mode, then press Start Quiz.";
-      nextBtn.textContent = "Start Quiz ▶";
-      nextBtn.disabled = false;
-
-      closeFormulaSheet();
-    }
-
-    function nextQuestion() {
-      if (!inProgress) return;
-      if (qIndex >= TOTAL_QUESTIONS) {
-        endQuiz();
-        return;
-      }
-
-      // Ensure the Quick Formula is closed just before the next question shows up
-      closeFormulaSheet();
-
-      stopTimer();
-      locked = false;
-      attemptedThisQ = false;
-      nextBtn.disabled = true;
-
-      feedbackEl.textContent = "";
-      optionsEl.innerHTML = "";
-      hintEl.textContent = "";
-
-      qIndex++;
-      metaEl.textContent = `Question ${qIndex} of ${TOTAL_QUESTIONS}`;
-
-      current = pickQuestion();
-      recentIds.push(current.id);
-      if (recentIds.length > RECENT_LIMIT) recentIds.shift();
-
-      questionEl.textContent = current.question;
-      shapeEl.innerHTML = shapeSVG(current.shape);
-
-      const opts = buildOptions(current);
-      opts.forEach((opt, i) => {
-        const btn = document.createElement("div");
-        btn.className = "sf-option";
-        btn.dataset.correct = opt.id === current.id ? "1" : "0";
-
-        // ✅ Remove "V =", "CSA =", etc in OPTIONS (no giveaway)
-        const displayed = stripLeftSide(opt.formula);
-
-        btn.innerHTML = `
-          <div class="sf-letter">${letters[i] || "?"}</div>
-          <div class="sf-formula">${displayed}</div>
-          <div class="sf-desc">${opt.desc}</div>
-        `;
-
-        btn.addEventListener("click", () => handlePick(btn));
-        optionsEl.appendChild(btn);
+        insaneKbEl.appendChild(div);
       });
+      // tip line
+      const tip=document.createElement("div");
+      tip.className="sf-insane-accepted";
+      tip.style.cssText="margin-top:6px;font-size:.82rem;color:#a5b4fc;";
+      tip.innerHTML="Tip: Use <strong>π</strong> or <strong>pi</strong>, <strong>²</strong> or <strong>^2</strong>, <strong>³</strong> or <strong>^3</strong>. Spaces ignored.";
+      insaneKbEl.appendChild(tip);
+    }
+    function renderInsaneDisplay(){
+      insaneDisp.textContent=insaneInput.length?insaneInput:"|";
+    }
+    function buildVarLegend(){
+      varLegendEl.innerHTML="";
+      (current.vars||[]).forEach(v=>{
+        const chip=document.createElement("span");
+        chip.className="sf-var-chip";
+        chip.innerHTML=`<strong>${v.s}</strong> = ${v.n}`;
+        varLegendEl.appendChild(chip);
+      });
+    }
+    function showInsane(){
+      optionsEl.style.display="none";
+      insaneArea.style.display="block";
+      insaneInput="";
+      renderInsaneDisplay();
+      insaneDisp.classList.remove("correct-flash","wrong-flash");
+      buildVarLegend();
+      buildKeyboard();
+      insaneSubmit.disabled=false;
+      insaneClear.disabled=false;
+    }
+    function hideInsane(){
+      insaneArea.style.display="none";
+      optionsEl.style.display="grid";
+    }
 
+    // ─── CORRECT ANSWER REVEAL (used everywhere) ──────────────────────────────
+    function revealBox(formula){
+      return `<span class="sf-correct-reveal">✔ Answer: ${formula}</span>`;
+    }
+
+    // ─── QUIZ FLOW ────────────────────────────────────────────────────────────
+    function startQuiz(){
+      score=0;total=0;streak=0;qIdx=0;inProgress=true;locked=false;attempted=false;
+      recentIds=[];
+      feedbackEl.innerHTML="";hintEl.textContent="";
+      updateScore();
+      topicSel.disabled=true; modeSel.disabled=true;
+      nextBtn.textContent="Next Question ▶"; nextBtn.disabled=true;
+      $("sf-formula-details").open=false;
+      $("sf-instructions").textContent=isInsane()
+        ?"Type the formula (right-hand side only) using the keyboard below. (10 questions)"
+        :"Memorise the formula — pick the correct one. (10 questions per quiz)";
+      nextQ();
+    }
+
+    function endQuiz(){
+      stopTimer();inProgress=false;locked=true;attempted=false;
+      topicSel.disabled=false; modeSel.disabled=false;
+      metaEl.textContent=`Quiz finished (${TOTAL_QUESTIONS} questions)`;
+      questionEl.textContent="—"; shapeEl.innerHTML="";
+      optionsEl.innerHTML=""; hintEl.textContent="";
+      hideInsane();
+      timerEl.textContent=isWarmup()?"☕ Warm-Up (No Timer)":"⏱ –";
+      feedbackEl.textContent=isWarmup()
+        ?"✅ Warm-Up complete! (No score recorded.)"
+        :`✅ Quiz complete! Final score: ${score} / ${total}`;
+      nextBtn.textContent="Restart Quiz ↻"; nextBtn.disabled=false;
+      $("sf-formula-details").open=false;
+    }
+
+    function resetQuiz(){
+      stopTimer();inProgress=false;locked=false;attempted=false;
+      score=0;total=0;streak=0;qIdx=0;recentIds=[];
+      topicSel.disabled=false; modeSel.disabled=false;
+      hideInsane(); updateScore();
+      metaEl.textContent="Ready";
+      questionEl.textContent="—"; shapeEl.innerHTML="";
+      optionsEl.innerHTML=""; hintEl.textContent="";
+      timerEl.textContent=isWarmup()?"☕ Warm-Up (No Timer)":"⏱ –";
+      feedbackEl.textContent="Choose your topic + mode, then press Start Quiz.";
+      nextBtn.textContent="Start Quiz ▶"; nextBtn.disabled=false;
+      $("sf-formula-details").open=false;
+    }
+
+    function nextQ(){
+      if(!inProgress)return;
+      if(qIdx>=TOTAL_QUESTIONS){endQuiz();return;}
+      $("sf-formula-details").open=false;
+      stopTimer();locked=false;attempted=false;nextBtn.disabled=true;
+      feedbackEl.innerHTML="";optionsEl.innerHTML="";hintEl.textContent="";insaneInput="";
+      qIdx++;
+      metaEl.textContent=`Question ${qIdx} of ${TOTAL_QUESTIONS}`;
+      current=pickQ();
+      recentIds.push(current.id);
+      if(recentIds.length>RECENT_LIMIT)recentIds.shift();
+      questionEl.textContent=current.question;
+      shapeEl.innerHTML=shapeSVG(current.shape, isInsane());
+
+      if(isInsane()){
+        showInsane();
+      } else {
+        hideInsane();
+        buildOpts(current).forEach((opt,i)=>{
+          const d=document.createElement("div");
+          d.className="sf-option";
+          d.dataset.correct=opt.id===current.id?"1":"0";
+          d.innerHTML=`<div class="sf-letter">${LETTERS[i]||"?"}</div>
+                       <div class="sf-opt-formula">${stripLHS(opt.formula)}</div>
+                       <div class="sf-desc">${opt.desc}</div>`;
+          d.addEventListener("click",()=>pick(d));
+          optionsEl.appendChild(d);
+        });
+      }
       startTimer();
     }
 
-    function revealCorrectOption() {
-      const cards = optionsEl.querySelectorAll(".sf-option");
-      cards.forEach((c) => {
-        if (c.dataset.correct === "1") c.classList.add("correct");
+    function revealCorrectCard(){
+      optionsEl.querySelectorAll(".sf-option").forEach(c=>{
+        if(c.dataset.correct==="1")c.classList.add("correct");
       });
     }
 
-    function handlePick(card) {
-      if (locked || !inProgress) return;
+    // ─── MULTIPLE-CHOICE HANDLER ──────────────────────────────────────────────
+    function pick(card){
+      if(locked||!inProgress)return;
+      const ok=card.dataset.correct==="1";
+      attempted=true; nextBtn.disabled=false;
 
-      const isCorrect = card.dataset.correct === "1";
-      attemptedThisQ = true;
-      nextBtn.disabled = false;
-
-      // Warm-up: no score change
-      if (isWarmup()) {
-        locked = true;
-
-        if (isCorrect) {
-          feedbackEl.textContent = `✅ Correct!`;
-          card.classList.add("correct");
-          revealCorrectOption();
-          launchConfetti(2);
-          playCorrectSound();
+      if(isWarmup()){
+        locked=true;
+        card.classList.add(ok?"correct":"wrong");
+        revealCorrectCard();
+        if(ok){
+          feedbackEl.innerHTML="✅ Correct!";
+          confetti(2); play(aOk);
         } else {
-          feedbackEl.textContent = `❌ Not quite. Correct formula: ${stripLeftSide(current.formula)}`;
-          card.classList.add("wrong");
-          revealCorrectOption();
-          playWrongSound();
+          feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`;
+          play(aBad);
         }
         return;
       }
 
-      // Timed modes
-      const withinTime = timeLeft > 0;
+      const inTime=timeLeft>0;
+      locked=true; stopTimer(); total++;
 
-      locked = true;
-      stopTimer();
-      total++;
-
-      if (withinTime) {
-        if (isCorrect) {
-          score += 1;
-          streak++;
-          feedbackEl.textContent = `✅ Correct!`;
+      if(inTime){
+        if(ok){
+          score++;streak++;
+          feedbackEl.innerHTML="✅ Correct!";
           card.classList.add("correct");
-          launchConfetti(3);
-          playCorrectSound();
+          confetti(3); play(aOk);
         } else {
-          streak = 0;
-          feedbackEl.textContent = `❌ Wrong. Correct: ${stripLeftSide(current.formula)}`;
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`;
           card.classList.add("wrong");
-          playWrongSound();
+          play(aBad);
         }
       } else {
-        // After time up
-        if (isCorrect) {
-          score += 0.5;
-          streak = 0;
-          feedbackEl.textContent = `🟡 Correct (after time) → +0.5 pts.`;
+        if(ok){
+          score+=0.5;streak=0;
+          feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
           card.classList.add("correct");
-          launchConfetti(1);
-          playCorrectSound();
+          confetti(1); play(aOk);
         } else {
-          streak = 0;
-          feedbackEl.textContent = `❌ Wrong (0 pts). Correct: ${stripLeftSide(current.formula)}`;
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`;
           card.classList.add("wrong");
-          playWrongSound();
+          play(aBad);
         }
       }
-
       updateScore();
-      revealCorrectOption();
+      revealCorrectCard();
     }
 
-    // ---------- QUICK FORMULA SHEET RULES ----------
-    // ✅ Requirement: warning BEFORE open (not after clicking open)
-    // - Warm-Up: allowed (no penalty)
-    // - Other modes: confirm -> if proceed, -0.5 marks and open
-    if (formulaSummary) {
-      formulaSummary.addEventListener("click", (e) => {
-        // Only intercept opening action
-        const willOpen = !formulaDetails.open;
+    // ─── INSANE SUBMIT HANDLER ────────────────────────────────────────────────
+    function submitInsane(){
+      if(locked||!inProgress)return;
+      const ok=checkInsane(current.id, insaneInput);
+      attempted=true; nextBtn.disabled=false;
 
-        // If closing, allow
-        if (!willOpen) return;
-
-        // Warm-Up is free
-        if (isWarmup()) return;
-
-        // Not warm-up: confirm BEFORE opening
-        // Also allow opening even if not inProgress, but no penalty unless inProgress
-        const ok = window.confirm("⚠️ Opening Quick Formula Sheet will -0.5 marks.\n\nDo you want to open it?");
-        if (!ok) {
-          e.preventDefault();
-          return;
+      if(isWarmup()){
+        locked=true;
+        insaneDisp.classList.add(ok?"correct-flash":"wrong-flash");
+        if(ok){
+          feedbackEl.innerHTML="✅ Correct!";
+          confetti(2); play(aOk);
+        } else {
+          feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`;
+          play(aBad);
         }
+        insaneSubmit.disabled=true; insaneClear.disabled=true;
+        return;
+      }
 
-        // Apply penalty only during an active quiz
-        if (inProgress) {
-          applyFormulaPenalty();
-          feedbackEl.textContent = "⚠️ -0.5 marks (Quick Formula Sheet opened).";
+      const inTime=timeLeft>0;
+      locked=true; stopTimer(); total++;
+
+      if(inTime){
+        if(ok){
+          score++;streak++;
+          feedbackEl.innerHTML="✅ Correct! +1 pt";
+          insaneDisp.classList.add("correct-flash");
+          confetti(3); play(aOk);
+        } else {
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`;
+          insaneDisp.classList.add("wrong-flash");
+          play(aBad);
+        }
+      } else {
+        if(ok){
+          score+=0.5;streak=0;
+          feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
+          insaneDisp.classList.add("correct-flash");
+          confetti(1); play(aOk);
+        } else {
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`;
+          insaneDisp.classList.add("wrong-flash");
+          play(aBad);
+        }
+      }
+      updateScore();
+      insaneSubmit.disabled=true; insaneClear.disabled=true;
+    }
+
+    // ─── FORMULA SHEET ────────────────────────────────────────────────────────
+    function renderSheet(){
+      const s=$("sf-sheet"); if(!s)return; s.innerHTML="";
+      function sec(title,items){
+        const c=document.createElement("div"); c.className="sf-sheet-card";
+        c.innerHTML=`<div class="sf-sheet-title">${title}</div>`;
+        items.forEach(it=>{
+          const l=document.createElement("div"); l.className="sf-sheet-line";
+          l.textContent=`${it.title}: ${it.formula}`; c.appendChild(l);
+        });
+        s.appendChild(c);
+      }
+      sec("2D Shapes",BANK.filter(x=>x.topic==="2d"));
+      sec("3D Solids",BANK.filter(x=>x.topic==="3d"));
+    }
+
+    // ─── EVENTS ───────────────────────────────────────────────────────────────
+    insaneSubmit.addEventListener("click", submitInsane);
+    insaneClear.addEventListener("click", ()=>{
+      if(locked)return;
+      insaneInput=""; renderInsaneDisplay();
+      insaneDisp.classList.remove("correct-flash","wrong-flash");
+    });
+
+    if(fmSummary){
+      fmSummary.addEventListener("click", e=>{
+        if(fmDetails.open)return;      // closing — allow
+        if(isWarmup())return;          // warm-up — free
+        if(!window.confirm("⚠️ Opening the Formula Sheet deducts 0.5 marks.\n\nOpen it?"))
+          {e.preventDefault();return;}
+        if(inProgress){
+          score-=0.5; updateScore();
+          feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";
         }
       });
     }
 
-    // ---------- EVENTS ----------
-    nextBtn.addEventListener("click", () => {
-      if (!inProgress) {
-        startQuiz();
+    nextBtn.addEventListener("click", ()=>{
+      if(!inProgress){startQuiz();return;}
+      if(!attempted){
+        feedbackEl.textContent=isInsane()
+          ?"⚠️ Please type and submit an answer first."
+          :"⚠️ Please attempt this question first — no skipping.";
         return;
       }
-
-      // Disable skipping questions without attempting
-      if (!attemptedThisQ) {
-        feedbackEl.textContent = "⚠️ No skipping: please attempt this question first.";
-        return;
-      }
-
-      nextQuestion();
+      nextQ();
     });
 
     resetBtn.addEventListener("click", resetQuiz);
-
-    modeSel.addEventListener("change", () => {
-      if (!inProgress) {
-        timerEl.textContent = isWarmup() ? "☕ Warm-Up (No Timer)" : "⏱ –";
-      }
+    modeSel.addEventListener("change", ()=>{
+      if(!inProgress) timerEl.textContent=isWarmup()?"☕ Warm-Up (No Timer)":"⏱ –";
     });
 
-    // ---------- INIT ----------
-    renderFormulaSheet();
+    // ─── INIT ─────────────────────────────────────────────────────────────────
+    renderSheet();
     resetQuiz();
   }
 
-  if (document.readyState === "loading") {
+  if(document.readyState==="loading")
     document.addEventListener("DOMContentLoaded", initShapesFormulaGame);
-  } else {
+  else
     initShapesFormulaGame();
-  }
 })();
