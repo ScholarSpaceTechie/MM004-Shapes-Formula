@@ -35,7 +35,8 @@
               <option value="easy">Easy</option>
               <option value="normal" selected>Normal</option>
               <option value="hard">Hard</option>
-              <option value="insane">Insane 🔥 (Type It!)</option>
+              <option value="superhard">Super Hard ✏️ (Type It!)</option>
+              <option value="insane">Insane 🔥 (Jumbled Letters!)</option>
             </select>
           </div>
         </div>
@@ -56,10 +57,10 @@
 
         <div class="sf-options" id="sf-options"></div>
 
-        <!-- Insane mode type-in area -->
+        <!-- Super Hard / Insane mode type-in area -->
         <div class="sf-insane-area" id="sf-insane-area" style="display:none;">
           <div class="sf-insane-header" id="sf-insane-header">
-            <span class="sf-insane-title">✏️ Type the formula (right-hand side only):</span>
+            <span class="sf-insane-title" id="sf-insane-title">✏️ Type the formula (right-hand side only):</span>
             <div class="sf-var-legend" id="sf-var-legend"></div>
           </div>
           <div class="sf-insane-display" id="sf-insane-display">|</div>
@@ -130,15 +131,9 @@
       .sf-sheet-card{border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.55);border-radius:12px;padding:10px 12px;}
       .sf-sheet-title{font-weight:800;margin-bottom:6px;}
       .sf-sheet-line{font-size:.9rem;opacity:.92;line-height:1.28;}
-
       /* ── Correct-answer reveal ── */
-      .sf-correct-reveal{
-        display:inline-block;margin-top:5px;padding:5px 13px;
-        border-radius:10px;border:1px solid rgba(34,197,94,.55);
-        background:rgba(0,35,15,.65);color:#86efac;font-size:.95rem;font-weight:700;
-      }
-
-      /* ── Insane mode ── */
+      .sf-correct-reveal{display:inline-block;margin-top:5px;padding:5px 13px;border-radius:10px;border:1px solid rgba(34,197,94,.55);background:rgba(0,35,15,.65);color:#86efac;font-size:.95rem;font-weight:700;}
+      /* ── Type-in area ── */
       .sf-insane-area{margin-top:14px;border:1px solid rgba(239,68,68,.45);background:rgba(30,8,8,.55);border-radius:16px;padding:16px;}
       .sf-insane-header{margin-bottom:10px;}
       .sf-insane-title{font-size:.95rem;color:#fca5a5;font-weight:700;}
@@ -157,18 +152,11 @@
       .sf-key-backspace{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5;}
       .sf-insane-actions{display:flex;gap:10px;flex-wrap:wrap;}
       .sf-insane-clear{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45);color:#fca5a5;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:700;}
-
       /* ── Confetti ── */
       .sf-confetti{position:fixed;z-index:99999;pointer-events:none;animation:sf-fall 1.8s ease-out forwards;font-size:1.7rem;}
       @keyframes sf-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}10%{opacity:1;}100%{transform:translateY(110vh) rotate(340deg);opacity:0;}}
       .sf-stream{position:fixed;z-index:99999;pointer-events:none;font-size:1.7rem;user-select:none;will-change:transform,opacity;}
-
-      @media(max-width:820px){
-        .sf-options{grid-template-columns:1fr;}
-        .sf-sheet-grid{grid-template-columns:1fr;}
-        .sf-shape svg{width:160px;}
-        .sf-insane-display{font-size:1.2rem;}
-      }
+      @media(max-width:820px){.sf-options{grid-template-columns:1fr;}.sf-sheet-grid{grid-template-columns:1fr;}.sf-shape svg{width:160px;}.sf-insane-display{font-size:1.2rem;}}
     `;
     document.head.appendChild(style);
 
@@ -179,122 +167,434 @@
     const TOTAL_QUESTIONS = 10;
     const RECENT_LIMIT    = 18;
 
-    // ─── SVG DIAGRAMS ─────────────────────────────────────────────────────────
-    // labelMode = true  →  draw algebra labels (yellow) on the shape (Insane mode)
-    function shapeSVG(key, lm) {
-      const S  = "rgba(255,255,255,.88)";   // shape stroke
-      const F  = "rgba(255,255,255,.08)";   // shape fill
-      const FA = "rgba(255,255,255,.22)";   // faint stroke (hidden edges)
-      const LC = "#facc15";                  // label colour
-      const DC = "rgba(250,204,21,.5)";     // dim-line colour
-      const LS = "11";                       // label font-size
+    // ─── LETTER POOL FOR JUMBLING ─────────────────────────────────────────────
+    // Letters available for jumbling (excluding θ, B, π which are always fixed)
+    const JPOOL = ["a","b","c","d","e","f","g","h","i","j","k","m","n","p","q","s","t","u","v","w","x","y","z"];
 
-      // helper: yellow text label
+    function shuffle(arr) {
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+      return a;
+    }
+
+    // Pick n distinct letters from JPOOL, excluding any in 'exclude' array
+    function pickLetters(n, exclude) {
+      const ex = new Set((exclude||[]).map(x=>x.toLowerCase()));
+      const pool = JPOOL.filter(l=>!ex.has(l));
+      return shuffle(pool).slice(0, n);
+    }
+
+    // ─── ALL-PERMUTATIONS HELPER ─────────────────────────────────────────────
+    // Returns every ordering of `factors` joined together as strings.
+    // e.g. allPerms(["π","r²","h"]) → ["πr²h","πhr²","r²πh","r²hπ","hr²π","hπr²"]
+    // This ensures any commutative multiplication order is accepted.
+    function allPerms(factors) {
+      if (factors.length <= 1) return factors.length ? [factors[0]] : [""];
+      const result = [];
+      for (let i = 0; i < factors.length; i++) {
+        const rest = factors.slice(0,i).concat(factors.slice(i+1));
+        for (const tail of allPerms(rest)) result.push(factors[i] + tail);
+      }
+      return [...new Set(result)];
+    }
+
+    // ─── PER-SHAPE JUMBLE GENERATORS ─────────────────────────────────────────
+    // Each returns a map of { canonical_var: assigned_letter, ... }
+    // and a `vars` array for the legend, and helper functions.
+    // In Super Hard mode: map is identity (canonical letters).
+    // In Insane mode: map is randomised.
+
+    function makeJumble(id, jumble) {
+      // Returns { map, vars, formula, fullFormula, accepted, svgArg }
+      // 'jumble' = true for Insane mode, false for Super Hard
+
+      function assign(originals, names, fixed) {
+        // originals: array of canonical letter strings
+        // names: array of human names (same length)
+        // fixed: array of letters that must stay fixed (e.g. "θ","B","π")
+        const fixedSet = new Set((fixed||[]).map(s=>String(s)));
+        const toJumble = originals.filter(l=>!fixedSet.has(String(l)));
+        let assigned;
+        if(jumble && toJumble.length > 0) {
+          const exclude = originals.filter(l=>fixedSet.has(String(l)));
+          const newLetters = pickLetters(toJumble.length, exclude);
+          assigned = originals.map(l => fixedSet.has(String(l)) ? l : newLetters.shift());
+        } else {
+          assigned = originals.slice();
+        }
+        const map = {};
+        originals.forEach((orig,i)=>{ map[orig]=assigned[i]; });
+        const vars = originals.map((orig,i)=>({ s:assigned[i], n:names[i], orig }));
+        return { map, vars, assigned };
+      }
+
+      switch(id) {
+
+        // ── square ──
+        case "sq_area":
+        case "sq_per": {
+          const {map,vars} = assign(["l"],["Side length"],[]);
+          const L = map["l"];
+          return {
+            map, vars,
+            svgArg: { shape:"square", L },
+            formula:     id==="sq_area" ? `${L}²`    : `4${L}`,
+            fullFormula: id==="sq_area" ? `A = ${L}²` : `P = 4${L}`,
+            accepted: id==="sq_area"
+              ? [`${L}²`,`${L}^2`,`${L}*${L}`,`${L}${L}`]
+              : allPerms(["4",L]).concat(allPerms(["4","*",L])),
+          };
+        }
+
+        // ── rectangle ──
+        case "rect_area":
+        case "rect_per": {
+          const {map,vars} = assign(["l","b"],["Length","Breadth"],[]);
+          const L=map["l"], B=map["b"];
+          return {
+            map, vars,
+            svgArg: { shape:"rectangle", L, B },
+            formula:     id==="rect_area" ? `${L}${B}`        : `2(${L} + ${B})`,
+            fullFormula: id==="rect_area" ? `A = ${L}${B}`    : `P = 2(${L} + ${B})`,
+            accepted: id==="rect_area"
+              ? allPerms([L,B])
+              : [`2(${L}+${B})`,`2(${B}+${L})`,`2${L}+2${B}`,`2${B}+2${L}`],
+          };
+        }
+
+        // ── triangle ──
+        case "tri_area": {
+          const {map,vars} = assign(["b","h"],["Base","Height"],[]);
+          const B=map["b"], H=map["h"];
+          // factors: ½, B, H — all orderings
+          const fracs = ["½","1/2","0.5"];
+          return {
+            map, vars,
+            svgArg: { shape:"triangle", B, H },
+            formula:     `½${B}${H}`,
+            fullFormula: `A = ½${B}${H}`,
+            accepted: fracs.flatMap(f => allPerms([f,B,H]))
+              .concat([`${B}${H}/2`,`${H}${B}/2`,`${B}*${H}/2`,`${H}*${B}/2`]),
+          };
+        }
+
+        // ── trapezium ──
+        case "trap_area": {
+          const {map,vars} = assign(["a","b","c","d","e"],["Top parallel side","Bottom parallel side","Perpendicular height","Right slant side","Left slant side"],[]);
+          const lTop=map["a"], lBot=map["b"], lH=map["c"], lSlant=map["d"], lSlant2=map["e"];
+          const fracs = ["½","1/2","0.5"];
+          const sums  = [`(${lTop}+${lBot})`,`(${lBot}+${lTop})`];
+          return {
+            map,
+            vars: [],   // no legend chips — students identify all sides themselves
+            keyVars: [  // all 5 letters on the keyboard
+              { s:lTop }, { s:lBot }, { s:lH }, { s:lSlant }, { s:lSlant2 },
+            ],
+            svgArg: { shape:"trapezium", lTop, lBot, lH, lSlant, lSlant2 },
+            formula:     `½(${lTop} + ${lBot})${lH}`,
+            fullFormula: `A = ½(${lTop} + ${lBot})${lH}`,
+            accepted: fracs.flatMap(f => sums.flatMap(s => allPerms([f,s,lH])))
+              .concat(sums.flatMap(s => [`${s}${lH}/2`,`${s}*${lH}/2`,`${s}${lH}/2`])),
+          };
+        }
+
+        // ── sector ──
+        case "sector_area":
+        case "sector_arc": {
+          const {map,vars} = assign(["r","θ"],["Radius","Angle (°)"],["θ"]);
+          const R=map["r"];
+          // sector area factors: θ/360, π, R²  — generate all orderings of the 3 factors
+          // sector arc  factors: θ/360, 2π, R  — generate all orderings of the 3 factors
+          const piVars = ["π","pi"];
+          return {
+            map, vars,
+            svgArg: { shape:"sector", R },
+            formula:     id==="sector_area" ? `(θ/360)π${R}²`    : `(θ/360)2π${R}`,
+            fullFormula: id==="sector_area" ? `A = (θ/360)π${R}²` : `L = (θ/360)2π${R}`,
+            accepted: id==="sector_area"
+              ? piVars.flatMap(pi =>
+                  allPerms([`(θ/360)`,`${pi}`,`${R}²`])
+                  .concat(allPerms([`θ/360`,`${pi}`,`${R}²`]))
+                  .concat(allPerms([`θ÷360`,`${pi}`,`${R}²`]))
+                  .concat(allPerms([`(θ/360)`,`${pi}`,`${R}^2`]))
+                  .concat(allPerms([`θ/360`,`${pi}`,`${R}^2`]))
+                )
+              : piVars.flatMap(pi =>
+                  allPerms([`(θ/360)`,`2`,`${pi}`,`${R}`])
+                  .concat(allPerms([`θ/360`,`2${pi}`,`${R}`]))
+                  .concat(allPerms([`θ÷360`,`2${pi}`,`${R}`]))
+                  .concat(allPerms([`(θ/360)`,`2${pi}`,`${R}`]))
+                ),
+          };
+        }
+
+        // ── pyramid ──
+        case "pyr_vol": {
+          const {map,vars} = assign(["p","q","h","s"],["Base length","Base width","Height","Slant edge"],[]);
+          const P=map["p"], Q=map["q"], H=map["h"];
+          const fracs = ["⅓","1/3"];
+          const pairs = [`${P}${Q}`,`${Q}${P}`,`${P}*${Q}`,`${Q}*${P}`,`${P}×${Q}`,`${Q}×${P}`];
+          const parenPairs = pairs.map(pq=>`(${pq})`);
+          return {
+            map, vars,
+            svgArg: { shape:"pyramid", P, Q, H, S:map["s"] },
+            formula:     `⅓(${P}×${Q})${H}`,
+            fullFormula: `V = ⅓(${P}×${Q})${H}`,
+            accepted: [
+              ...fracs.flatMap(f => pairs.flatMap(pq  => allPerms([f,pq,H]))),
+              ...fracs.flatMap(f => parenPairs.flatMap(pq => allPerms([f,pq,H]))),
+              ...pairs.map(pq => `${pq}${H}/3`),
+              ...pairs.map(pq => `(${pq})${H}/3`),
+              ...pairs.map(pq => `${pq}*${H}/3`),
+            ].filter((v,i,a)=>a.indexOf(v)===i),
+          };
+        }
+
+        // ── cone ──
+        case "cone_vol":
+        case "cone_csa": {
+          const {map,vars} = assign(["r","h","l"],["Radius","Height","Slant height"],[]);
+          const R=map["r"], H=map["h"], L=map["l"];
+          const piVars = ["π","pi"];
+          return {
+            map, vars,
+            svgArg: { shape:"cone", R, H, L },
+            formula:     id==="cone_vol" ? `⅓π${R}²${H}` : `π${R}${L}`,
+            fullFormula: id==="cone_vol" ? `V = ⅓π${R}²${H}` : `CSA = π${R}${L}`,
+            accepted: id==="cone_vol"
+              ? ["⅓","1/3"].flatMap(f =>
+                  piVars.flatMap(pi => [
+                    ...allPerms([f,`${pi}`,`${R}²`,H]),
+                    ...allPerms([f,`${pi}`,`${R}^2`,H]),
+                  ])
+                ).concat(
+                  piVars.flatMap(pi => [
+                    `${pi}${R}²${H}/3`,`${pi}${R}^2${H}/3`,
+                    `${pi}${H}${R}²/3`,`${pi}${H}${R}^2/3`,
+                    `${R}²${H}${pi}/3`,`${R}^2${H}${pi}/3`,
+                  ])
+                )
+              : piVars.flatMap(pi => allPerms([`${pi}`,R,L])),
+          };
+        }
+
+        // ── cuboid ──
+        case "cuboid_vol":
+        case "cuboid_sa": {
+          const {map,vars} = assign(["l","b","h"],["Length","Breadth","Height"],[]);
+          const L=map["l"], B=map["b"], H=map["h"];
+          return {
+            map, vars,
+            svgArg: { shape:"cuboid", L, B, H },
+            formula:     id==="cuboid_vol" ? `${L}${B}${H}`               : `2(${L}${B} + ${L}${H} + ${B}${H})`,
+            fullFormula: id==="cuboid_vol" ? `V = ${L}${B}${H}`           : `SA = 2(${L}${B} + ${L}${H} + ${B}${H})`,
+            accepted: id==="cuboid_vol"
+              ? allPerms([L,B,H])
+              : (()=>{
+                  // all 6 orderings of the three face-pair sums inside 2(...)
+                  const fp = [[L,B],[L,H],[B,H]];
+                  const facePairs = fp.map(([x,y])=>[`${x}${y}`,`${y}${x}`]);
+                  // generate all 6 orderings of the 3 pairs (each pair can be either orientation)
+                  const results = [];
+                  for(const a of facePairs[0]) for(const b of facePairs[1]) for(const c of facePairs[2]) {
+                    const perms = [[a,b,c],[a,c,b],[b,a,c],[b,c,a],[c,a,b],[c,b,a]];
+                    for(const [x,y,z] of perms) {
+                      results.push(`2(${x}+${y}+${z})`);
+                      results.push(`2${x}+2${y}+2${z}`);
+                    }
+                  }
+                  return [...new Set(results)];
+                })(),
+          };
+        }
+
+        // ── cylinder ──
+        case "cyl_vol":
+        case "cyl_csa": {
+          const {map,vars} = assign(["r","h"],["Radius","Height"],[]);
+          const R=map["r"], H=map["h"];
+          const piVars = ["π","pi"];
+          return {
+            map, vars,
+            svgArg: { shape:"cylinder", R, H },
+            formula:     id==="cyl_vol" ? `π${R}²${H}` : `2π${R}${H}`,
+            fullFormula: id==="cyl_vol" ? `V = π${R}²${H}` : `CSA = 2π${R}${H}`,
+            accepted: id==="cyl_vol"
+              ? piVars.flatMap(pi => [
+                  ...allPerms([`${pi}`,`${R}²`,H]),
+                  ...allPerms([`${pi}`,`${R}^2`,H]),
+                ])
+              : piVars.flatMap(pi => allPerms([`2${pi}`,R,H])
+                  .concat(allPerms([`2`,`${pi}`,R,H]))),
+          };
+        }
+
+        // ── sphere ──
+        case "sphere_vol":
+        case "sphere_sa": {
+          const {map,vars} = assign(["r"],["Radius"],[]);
+          const R=map["r"];
+          const piVars = ["π","pi"];
+          return {
+            map, vars,
+            svgArg: { shape:"sphere", R },
+            formula:     id==="sphere_vol" ? `4/3 π${R}³` : `4π${R}²`,
+            fullFormula: id==="sphere_vol" ? `V = 4/3 π${R}³` : `SA = 4π${R}²`,
+            accepted: id==="sphere_vol"
+              ? piVars.flatMap(pi => [
+                  ...allPerms([`4/3`,`${pi}`,`${R}³`]),
+                  ...allPerms([`4/3`,`${pi}`,`${R}^3`]),
+                  ...allPerms([`(4/3)`,`${pi}`,`${R}³`]),
+                  ...allPerms([`(4/3)`,`${pi}`,`${R}^3`]),
+                  `4${pi}${R}³/3`,`4${pi}${R}^3/3`,
+                  `${pi}*4*${R}³/3`,`4*${pi}*${R}³/3`,
+                ])
+              : piVars.flatMap(pi => [
+                  ...allPerms([`4${pi}`,`${R}²`]),
+                  ...allPerms([`4${pi}`,`${R}^2`]),
+                  ...allPerms([`4`,`${pi}`,`${R}²`]),
+                  ...allPerms([`4`,`${pi}`,`${R}^2`]),
+                ]),
+          };
+        }
+
+        default: return { map:{}, vars:[], formula:"?", fullFormula:"?", accepted:[], svgArg:{shape:"square"} };
+      }
+    }
+
+    // ─── SVG DIAGRAMS ─────────────────────────────────────────────────────────
+    // lm = false/null (no labels) | object with shape-specific letter keys
+    function shapeSVG(key, lm) {
+      const S  = "rgba(255,255,255,.88)";
+      const F  = "rgba(255,255,255,.08)";
+      const FA = "rgba(255,255,255,.22)";
+      const LC = "#facc15";
+      const DC = "rgba(250,204,21,.5)";
+      const LS = "11";
       const T = (x,y,t,a) => `<text x="${x}" y="${y}" fill="${LC}" font-size="${LS}" font-weight="700" text-anchor="${a||"middle"}" font-family="sans-serif">${t}</text>`;
-      // helper: dashed yellow dimension line
       const D = (x1,y1,x2,y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
 
       switch(key) {
-
-        case "square": return `<svg viewBox="0 0 150 140">
-          <rect x="20" y="18" width="90" height="90" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(20,11,110,11)}${T(65,9,"l")}
-                <line x1="116" y1="18" x2="116" y2="108" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
-                ${T(130,67,"l")}`:``}
-        </svg>`;
-
-        case "rectangle": return `<svg viewBox="0 0 190 120">
-          <rect x="15" y="20" width="140" height="70" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(15,13,155,13)}${T(85,10,"l")}
-                ${D(161,20,161,90)}${T(175,58,"b")}`:``}
-        </svg>`;
-
-        case "triangle": return `<svg viewBox="0 0 190 140">
-          <polygon points="15,115 95,15 175,115" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(15,123,175,123)}${T(95,133,"b")}
-                ${D(95,15,95,115)}${T(110,70,"h")}`:``}
-        </svg>`;
-
-        case "trapezium": return `<svg viewBox="0 0 210 150">
-          <polygon points="50,20 155,20 180,115 20,115" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`
-            ${D(50,12,155,12)}${T(102,9,"a")}
-            ${D(20,125,180,125)}${T(100,136,"b")}
-            <line x1="14" y1="20" x2="14" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
-            ${T(5,72,"c","start")}
-            <line x1="186" y1="20" x2="186" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
-            ${T(198,72,"d","start")}
-            ${D(160,12,185,12)}${T(185,9,"h","end")}
-            <line x1="185" y1="12" x2="185" y2="115" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
-          `:``}
-        </svg>`;
-
-        case "circle": return `<svg viewBox="0 0 130 130">
-          <circle cx="65" cy="65" r="48" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`<line x1="65" y1="65" x2="113" y2="65" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>${T(89,58,"r")}`:``}
-        </svg>`;
-
-        case "sector": return `<svg viewBox="0 0 160 150">
-          <path d="M80 90 L80 25 A65 65 0 0 1 143 115 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <circle cx="80" cy="90" r="65" fill="none" stroke="${FA}" stroke-width="2"/>
-          ${lm?`
-            <line x1="80" y1="90" x2="80" y2="25" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
-            <line x1="80" y1="90" x2="143" y2="115" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
-            ${T(60,55,"r")}
-            ${T(125,118,"r")}
-            <path d="M80 68 A22 22 0 0 1 101 78" fill="none" stroke="${LC}" stroke-width="2"/>
-            ${T(112,65,"θ")}
-          `:``}
-        </svg>`;
-
-        case "pyramid": return `<svg viewBox="0 0 210 140">
-          <polygon points="55,105 135,105 170,120 90,120" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <line x1="55"  y1="105" x2="90"  y2="120" stroke="${FA}" stroke-width="2.5"/>
-          <line x1="135" y1="105" x2="170" y2="120" stroke="${FA}" stroke-width="2.5"/>
-          <circle cx="112" cy="28" r="2.5" fill="${S}"/>
-          <line x1="112" y1="28" x2="55"  y2="105" stroke="${S}" stroke-width="3"/>
-          <line x1="112" y1="28" x2="135" y2="105" stroke="${S}" stroke-width="3"/>
-          <line x1="112" y1="28" x2="170" y2="120" stroke="${FA}" stroke-width="2.5"/>
-          <line x1="112" y1="28" x2="90"  y2="120" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(112,28,112,112)}${T(124,74,"h")}
-                ${T(105,133,"B = base area")}`:``}
-        </svg>`;
-
-        case "cone": return `<svg viewBox="0 0 200 140">
-          <ellipse cx="100" cy="112" rx="68" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <path d="M32 112 L100 20 L168 112" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(100,112,168,112)}${T(134,128,"r")}
-                ${D(100,20,100,112)}${T(85,70,"h")}
-                <line x1="100" y1="20" x2="168" y2="112" stroke="${LC}" stroke-width="1.2" stroke-dasharray="3,3" opacity=".7"/>
-                ${T(145,58,"l")}`:``}
-        </svg>`;
-
-        case "cuboid": return `<svg viewBox="0 0 210 140">
-          <path d="M30 50 L120 50 L155 25 L65 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <path d="M30 50 L30 110 L120 110 L120 50 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <path d="M120 50 L120 110 L155 85 L155 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(30,117,120,117)}${T(75,128,"l")}
-                ${D(126,50,126,110)}${T(137,83,"h")}
-                ${D(120,110,155,85)}${T(150,106,"b")}`:``}
-        </svg>`;
-
-        case "cylinder": return `<svg viewBox="0 0 190 140">
-          <ellipse cx="95" cy="28" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <line x1="37" y1="28" x2="37" y2="108" stroke="${S}" stroke-width="3"/>
-          <line x1="153" y1="28" x2="153" y2="108" stroke="${S}" stroke-width="3"/>
-          <ellipse cx="95" cy="108" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
-          ${lm?`${D(95,28,153,28)}${T(124,20,"r")}
-                ${D(159,28,159,108)}${T(173,72,"h")}`:``}
-        </svg>`;
-
-        case "sphere": return `<svg viewBox="0 0 140 140">
-          <circle cx="70" cy="70" r="55" fill="${F}" stroke="${S}" stroke-width="3"/>
-          <ellipse cx="70" cy="70" rx="55" ry="20" fill="none" stroke="${FA}" stroke-width="2"/>
-          <ellipse cx="70" cy="70" rx="22" ry="55" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
-          ${lm?`<line x1="70" y1="70" x2="70" y2="15" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
-                ${T(53,44,"r")}`:``}
-        </svg>`;
-
+        case "square": {
+          const L = (lm&&lm.L)||"l";
+          return `<svg viewBox="0 0 150 140">
+            <rect x="20" y="18" width="90" height="90" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(20,11,110,11)}${T(65,9,L)}
+                  <line x1="116" y1="18" x2="116" y2="108" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>
+                  ${T(130,67,L)}`:``}
+          </svg>`;
+        }
+        case "rectangle": {
+          const L=(lm&&lm.L)||"l", Bv=(lm&&lm.B)||"b";
+          return `<svg viewBox="0 0 190 120">
+            <rect x="15" y="20" width="140" height="70" rx="8" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(15,13,155,13)}${T(85,10,L)}${D(161,20,161,90)}${T(175,58,Bv)}`:``}
+          </svg>`;
+        }
+        case "triangle": {
+          const Bv=(lm&&lm.B)||"b", H=(lm&&lm.H)||"h";
+          return `<svg viewBox="0 0 190 140">
+            <polygon points="15,115 95,15 175,115" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(15,123,175,123)}${T(95,133,Bv)}${D(95,15,95,115)}${T(110,70,H)}`:``}
+          </svg>`;
+        }
+        case "trapezium": {
+          const tl = lm || {lTop:"a",lBot:"b",lH:"c",lSlant:"d",lSlant2:"e"};
+          return `<svg viewBox="0 0 230 160">
+            <polygon points="55,20 165,20 195,125 20,125" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`
+              ${D(55,11,165,11)}${T(110,8,tl.lTop)}
+              ${D(20,135,195,135)}${T(107,146,tl.lBot)}
+              <line x1="165" y1="20" x2="195" y2="125" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+              ${T(190,65,tl.lSlant,"start")}
+              <line x1="55" y1="20" x2="20" y2="125" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+              ${T(28,65,tl.lSlant2,"end")}
+              <line x1="115" y1="20" x2="115" y2="125" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+              ${T(124,72,tl.lH,"start")}
+              <line x1="112" y1="20" x2="118" y2="20" stroke="${LC}" stroke-width="1.5"/>
+              <line x1="112" y1="125" x2="118" y2="125" stroke="${LC}" stroke-width="1.5"/>
+              <rect x="115" y="117" width="8" height="8" fill="none" stroke="${LC}" stroke-width="1.2"/>
+            `:``}
+          </svg>`;
+        }
+        case "sector": {
+          const R=(lm&&lm.R)||"r";
+          return `<svg viewBox="0 0 160 150">
+            <path d="M80 90 L80 25 A65 65 0 0 1 143 115 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <circle cx="80" cy="90" r="65" fill="none" stroke="${FA}" stroke-width="2"/>
+            ${lm?`
+              <line x1="80" y1="90" x2="80" y2="25" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+              <line x1="80" y1="90" x2="143" y2="115" stroke="${LC}" stroke-width="1.8" stroke-dasharray="5,3"/>
+              ${T(62,52,R)}${T(122,120,R)}
+              <path d="M80 58 A32 32 0 0 1 109.7 101.8" fill="none" stroke="${LC}" stroke-width="2.2"/>
+              <circle cx="80" cy="58" r="2.5" fill="${LC}"/>
+              <circle cx="109.7" cy="101.8" r="2.5" fill="${LC}"/>
+              ${T(122,62,"θ")}
+            `:``}
+          </svg>`;
+        }
+        case "pyramid": {
+          const H=(lm&&lm.H)||"h";
+          const P=(lm&&lm.P)||"p";
+          const Q=(lm&&lm.Q)||"q";
+          const Sv=(lm&&lm.S)||"s";
+          return `<svg viewBox="0 0 230 155">
+            <polygon points="55,110 145,110 180,125 90,125" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <line x1="55"  y1="110" x2="90"  y2="125" stroke="${FA}" stroke-width="2.5"/>
+            <line x1="145" y1="110" x2="180" y2="125" stroke="${FA}" stroke-width="2.5"/>
+            <circle cx="117" cy="28" r="2.5" fill="${S}"/>
+            <line x1="117" y1="28" x2="55"  y2="110" stroke="${S}" stroke-width="3"/>
+            <line x1="117" y1="28" x2="145" y2="110" stroke="${S}" stroke-width="3"/>
+            <line x1="117" y1="28" x2="180" y2="125" stroke="${FA}" stroke-width="2.5"/>
+            <line x1="117" y1="28" x2="90"  y2="125" stroke="${S}" stroke-width="3"/>
+            ${lm?`
+              ${D(117,28,117,117)}${T(130,78,H)}
+              ${D(55,117,145,117)}${T(100,130,P)}
+              ${D(145,110,180,125)}${T(175,108,Q,"start")}
+              <line x1="117" y1="28" x2="145" y2="110" stroke="${LC}" stroke-width="1.4" stroke-dasharray="4,3" opacity=".85"/>
+              ${T(142,62,Sv,"start")}
+            `:``}
+          </svg>`;
+        }
+        case "cone": {
+          const R=(lm&&lm.R)||"r", H=(lm&&lm.H)||"h", L=(lm&&lm.L)||"l";
+          return `<svg viewBox="0 0 200 140">
+            <ellipse cx="100" cy="112" rx="68" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <path d="M32 112 L100 20 L168 112" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(100,112,168,112)}${T(134,128,R)}
+                  ${D(100,20,100,112)}${T(85,70,H)}
+                  <line x1="100" y1="20" x2="168" y2="112" stroke="${LC}" stroke-width="1.2" stroke-dasharray="3,3" opacity=".7"/>
+                  ${T(145,58,L)}`:``}
+          </svg>`;
+        }
+        case "cuboid": {
+          const L=(lm&&lm.L)||"l", Bv=(lm&&lm.B)||"b", H=(lm&&lm.H)||"h";
+          return `<svg viewBox="0 0 210 140">
+            <path d="M30 50 L120 50 L155 25 L65 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <path d="M30 50 L30 110 L120 110 L120 50 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <path d="M120 50 L120 110 L155 85 L155 25 Z" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(30,117,120,117)}${T(75,128,L)}${D(126,50,126,110)}${T(137,83,H)}${D(120,110,155,85)}${T(150,106,Bv)}`:``}
+          </svg>`;
+        }
+        case "cylinder": {
+          const R=(lm&&lm.R)||"r", H=(lm&&lm.H)||"h";
+          return `<svg viewBox="0 0 190 140">
+            <ellipse cx="95" cy="28" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <line x1="37" y1="28" x2="37" y2="108" stroke="${S}" stroke-width="3"/>
+            <line x1="153" y1="28" x2="153" y2="108" stroke="${S}" stroke-width="3"/>
+            <ellipse cx="95" cy="108" rx="58" ry="20" fill="${F}" stroke="${S}" stroke-width="3"/>
+            ${lm?`${D(95,28,153,28)}${T(124,20,R)}${D(159,28,159,108)}${T(173,72,H)}`:``}
+          </svg>`;
+        }
+        case "sphere": {
+          const R=(lm&&lm.R)||"r";
+          return `<svg viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="55" fill="${F}" stroke="${S}" stroke-width="3"/>
+            <ellipse cx="70" cy="70" rx="55" ry="20" fill="none" stroke="${FA}" stroke-width="2"/>
+            <ellipse cx="70" cy="70" rx="22" ry="55" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+            ${lm?`<line x1="70" y1="70" x2="70" y2="15" stroke="${DC}" stroke-width="1.5" stroke-dasharray="4,3"/>${T(53,44,R)}`:``}
+          </svg>`;
+        }
         default: return `<svg viewBox="0 0 120 120">
           <rect x="20" y="20" width="80" height="80" rx="10" fill="${F}" stroke="${S}" stroke-width="3" opacity=".6"/>
         </svg>`;
@@ -302,132 +602,27 @@
     }
 
     // ─── FORMULA BANK ─────────────────────────────────────────────────────────
-    // vars: [{s: algebra symbol, n: full word}]  — shown as chips in Insane mode
     const BANK = [
-      // ── 2D ──
-      {id:"sq_area",    topic:"2d", title:"Square — area",
-       question:"Square: What is the formula for area?",
-       formula:"A = l²",            desc:"l = side length",
-       shape:"square",   vars:[{s:"l",n:"Side length"}]},
-
-      {id:"sq_per",     topic:"2d", title:"Square — perimeter",
-       question:"Square: What is the formula for perimeter?",
-       formula:"P = 4l",            desc:"l = side length",
-       shape:"square",   vars:[{s:"l",n:"Side length"}]},
-
-      {id:"rect_area",  topic:"2d", title:"Rectangle — area",
-       question:"Rectangle: What is the formula for area?",
-       formula:"A = lb",            desc:"l = length, b = breadth",
-       shape:"rectangle",vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"}]},
-
-      {id:"rect_per",   topic:"2d", title:"Rectangle — perimeter",
-       question:"Rectangle: What is the formula for perimeter?",
-       formula:"P = 2(l + b)",      desc:"l = length, b = breadth",
-       shape:"rectangle",vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"}]},
-
-      {id:"trap_area",  topic:"2d", title:"Trapezium — area",
-       question:"Trapezium: What is the formula for area?",
-       formula:"A = ½(a + b)h",     desc:"a, b = parallel sides, h = height",
-       shape:"trapezium",vars:[{s:"a",n:"Top side"},{s:"b",n:"Bottom side"},{s:"h",n:"Height"}]},
-
-      {id:"tri_area",   topic:"2d", title:"Triangle — area",
-       question:"Triangle: What is the formula for area?",
-       formula:"A = ½bh",           desc:"b = base, h = height",
-       shape:"triangle", vars:[{s:"b",n:"Base"},{s:"h",n:"Height"}]},
-
-      {id:"sector_area",topic:"2d", title:"Sector — area",
-       question:"Circle sector: What is the formula for area (θ in degrees)?",
-       formula:"A = (θ/360)πr²",    desc:"θ = central angle (°), r = radius",
-       shape:"sector",   vars:[{s:"r",n:"Radius"},{s:"θ",n:"Angle (°)"}]},
-
-      {id:"sector_arc", topic:"2d", title:"Sector — arc length",
-       question:"Circle sector: What is the formula for arc length (θ in degrees)?",
-       formula:"L = (θ/360)2πr",    desc:"θ = central angle (°), r = radius",
-       shape:"sector",   vars:[{s:"r",n:"Radius"},{s:"θ",n:"Angle (°)"}]},
-
-      // ── 3D ──
-      {id:"pyr_vol",    topic:"3d", title:"Pyramid — volume",
-       question:"Pyramid (any base): What is the formula for volume?",
-       formula:"V = ⅓Bh",           desc:"B = base area, h = height",
-       shape:"pyramid",  vars:[{s:"B",n:"Base area"},{s:"h",n:"Height"}]},
-
-      {id:"cone_vol",   topic:"3d", title:"Cone — volume",
-       question:"Cone: What is the formula for volume?",
-       formula:"V = ⅓πr²h",         desc:"r = radius, h = height",
-       shape:"cone",     vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
-
-      {id:"cone_csa",   topic:"3d", title:"Cone — curved surface area",
-       question:"Cone: What is the formula for curved surface area?",
-       formula:"CSA = πrl",          desc:"r = radius, l = slant height",
-       shape:"cone",     vars:[{s:"r",n:"Radius"},{s:"l",n:"Slant height"}]},
-
-      {id:"cuboid_vol", topic:"3d", title:"Cuboid — volume",
-       question:"Cuboid: What is the formula for volume?",
-       formula:"V = lbh",            desc:"l = length, b = breadth, h = height",
-       shape:"cuboid",   vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"},{s:"h",n:"Height"}]},
-
-      {id:"cuboid_sa",  topic:"3d", title:"Cuboid — surface area",
-       question:"Cuboid: What is the formula for total surface area?",
-       formula:"SA = 2(lb + lh + bh)", desc:"l, b, h = dimensions",
-       shape:"cuboid",   vars:[{s:"l",n:"Length"},{s:"b",n:"Breadth"},{s:"h",n:"Height"}]},
-
-      {id:"cyl_vol",    topic:"3d", title:"Cylinder — volume",
-       question:"Cylinder: What is the formula for volume?",
-       formula:"V = πr²h",           desc:"r = radius, h = height",
-       shape:"cylinder", vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
-
-      {id:"cyl_csa",    topic:"3d", title:"Cylinder — curved surface area",
-       question:"Cylinder: What is the formula for curved surface area?",
-       formula:"CSA = 2πrh",         desc:"r = radius, h = height",
-       shape:"cylinder", vars:[{s:"r",n:"Radius"},{s:"h",n:"Height"}]},
-
-      {id:"sphere_vol", topic:"3d", title:"Sphere — volume",
-       question:"Sphere: What is the formula for volume?",
-       formula:"V = 4/3 πr³",        desc:"r = radius",
-       shape:"sphere",   vars:[{s:"r",n:"Radius"}]},
-
-      {id:"sphere_sa",  topic:"3d", title:"Sphere — surface area",
-       question:"Sphere: What is the formula for surface area?",
-       formula:"SA = 4πr²",          desc:"r = radius",
-       shape:"sphere",   vars:[{s:"r",n:"Radius"}]},
+      {id:"sq_area",    topic:"2d", title:"Square — area",               question:"Square: What is the formula for area?",                              formula:"A = l²",              desc:"l = side length",                                  shape:"square"},
+      {id:"sq_per",     topic:"2d", title:"Square — perimeter",          question:"Square: What is the formula for perimeter?",                         formula:"P = 4l",              desc:"l = side length",                                  shape:"square"},
+      {id:"rect_area",  topic:"2d", title:"Rectangle — area",            question:"Rectangle: What is the formula for area?",                           formula:"A = lb",              desc:"l = length, b = breadth",                          shape:"rectangle"},
+      {id:"rect_per",   topic:"2d", title:"Rectangle — perimeter",       question:"Rectangle: What is the formula for perimeter?",                      formula:"P = 2(l + b)",        desc:"l = length, b = breadth",                          shape:"rectangle"},
+      {id:"trap_area",  topic:"2d", title:"Trapezium — area",            question:"Trapezium: What is the formula for area?",                           formula:"A = ½(a + b)c",       desc:"a, b = parallel sides, c = perpendicular height",  shape:"trapezium"},
+      {id:"tri_area",   topic:"2d", title:"Triangle — area",             question:"Triangle: What is the formula for area?",                            formula:"A = ½bh",             desc:"b = base, h = height",                             shape:"triangle"},
+      {id:"sector_area",topic:"2d", title:"Sector — area",               question:"Circle sector: What is the formula for area (θ in degrees)?",        formula:"A = (θ/360)πr²",      desc:"θ = angle (°), r = radius",                        shape:"sector"},
+      {id:"sector_arc", topic:"2d", title:"Sector — arc length",         question:"Circle sector: What is the formula for arc length (θ in degrees)?",  formula:"L = (θ/360)2πr",      desc:"θ = angle (°), r = radius",                        shape:"sector"},
+      {id:"pyr_vol",    topic:"3d", title:"Pyramid — volume",            question:"Pyramid (any base): What is the formula for volume?",                formula:"V = ⅓(p×q)h",         desc:"p, q = base dimensions, h = height",               shape:"pyramid"},
+      {id:"cone_vol",   topic:"3d", title:"Cone — volume",               question:"Cone: What is the formula for volume?",                              formula:"V = ⅓πr²h",           desc:"r = radius, h = height",                           shape:"cone"},
+      {id:"cone_csa",   topic:"3d", title:"Cone — curved surface area",  question:"Cone: What is the formula for curved surface area?",                 formula:"CSA = πrl",            desc:"r = radius, l = slant height",                     shape:"cone"},
+      {id:"cuboid_vol", topic:"3d", title:"Cuboid — volume",             question:"Cuboid: What is the formula for volume?",                            formula:"V = lbh",             desc:"l = length, b = breadth, h = height",              shape:"cuboid"},
+      {id:"cuboid_sa",  topic:"3d", title:"Cuboid — surface area",       question:"Cuboid: What is the formula for total surface area?",                formula:"SA = 2(lb + lh + bh)", desc:"l, b, h = dimensions",                             shape:"cuboid"},
+      {id:"cyl_vol",    topic:"3d", title:"Cylinder — volume",           question:"Cylinder: What is the formula for volume?",                          formula:"V = πr²h",            desc:"r = radius, h = height",                           shape:"cylinder"},
+      {id:"cyl_csa",    topic:"3d", title:"Cylinder — curved surface area", question:"Cylinder: What is the formula for curved surface area?",          formula:"CSA = 2πrh",          desc:"r = radius, h = height",                           shape:"cylinder"},
+      {id:"sphere_vol", topic:"3d", title:"Sphere — volume",             question:"Sphere: What is the formula for volume?",                            formula:"V = 4/3 πr³",         desc:"r = radius",                                       shape:"sphere"},
+      {id:"sphere_sa",  topic:"3d", title:"Sphere — surface area",       question:"Sphere: What is the formula for surface area?",                      formula:"SA = 4πr²",           desc:"r = radius",                                       shape:"sphere"},
     ];
 
-    // ─── INSANE ACCEPTED ANSWERS ──────────────────────────────────────────────
-    const ACCEPTED = {
-      sq_area:    ["l²","l^2","l*l","ll"],
-      sq_per:     ["4l"],
-      rect_area:  ["lb","l*b","bl","b*l"],
-      rect_per:   ["2(l+b)","2(b+l)","2l+2b","2b+2l"],
-      trap_area:  ["½(a+b)h","1/2(a+b)h","(a+b)h/2","(a+b)/2*h","0.5(a+b)h"],
-      tri_area:   ["½bh","1/2bh","bh/2","0.5bh"],
-      sector_area:["(θ/360)πr²","(θ/360)pir²","(θ/360)πr^2","(θ/360)pir^2",
-                   "(theta/360)πr²","(theta/360)pir^2",
-                   "πr²(θ/360)","pir²(θ/360)","πr^2(θ/360)",
-                   "πr²*θ÷360","pir²*θ÷360","πr^2*θ÷360",
-                   "πr²θ÷360","pir²θ÷360","πr^2θ÷360",
-                   "πr²*θ/360","pir²*θ/360","πr^2*θ/360",
-                   "πr²θ/360","pir²θ/360","πr^2θ/360",
-                   "θ/360*πr²","θ/360πr²","θ÷360*πr²","θ÷360πr²"],
-      sector_arc: ["(θ/360)2πr","(θ/360)2pir","2πr(θ/360)","2pir(θ/360)",
-                   "(theta/360)2πr","(theta/360)2pir",
-                   "θ÷360*2πr","2πr*θ÷360","2πrθ÷360","2pirθ÷360",
-                   "θ/360*2πr","2πr*θ/360","2πrθ/360","2pirθ/360"],
-      pyr_vol:    ["⅓Bh","1/3Bh","⅓(Bh)","1/3(Bh)","Bh/3"],
-      cone_vol:   ["⅓πr²h","1/3πr²h","⅓pir²h","1/3pir²h",
-                   "⅓πr^2h","1/3πr^2h","πr²h/3","pir²h/3"],
-      cone_csa:   ["πrl","pirl"],
-      cuboid_vol: ["lbh","l*b*h","lhb","l*h*b","blh","b*l*h","bhl","b*h*l","hlb","h*l*b","hbl","h*b*l"],
-      cuboid_sa:  ["2(lb+lh+bh)","2(lb+bh+lh)","2(lh+hb+lb)","2(lh+lb+hb)",
-                   "2(bh+lb+lh)","2(bh+lh+lb)","2(hb+bl+hl)","2(hl+hb+lb)",
-                   "2lb+2lh+2bh","2lh+2hb+2lb","2bh+2lb+2lh"],
-      cyl_vol:    ["πr²h","pir²h","πr^2h","pir^2h"],
-      cyl_csa:    ["2πrh","2pirh"],
-      sphere_vol: ["4/3πr³","4/3pir³","4/3πr^3","4/3pir^3",
-                   "(4/3)πr³","(4/3)pir³","(4πr³)/3","4πr³/3"],
-      sphere_sa:  ["4πr²","4pir²","4πr^2","4pir^2"],
-    };
-
-    // normalise user input & accepted answers before comparing
+    // normalise for comparison
     function norm(s) {
       return String(s).toLowerCase()
         .replace(/\s+/g,"")
@@ -439,28 +634,14 @@
         .replace(/([a-zθ])3(?![0-9])/g,"$1^3")
         .replace(/\*/g,"");
     }
-    function checkInsane(id, input) {
-      return (ACCEPTED[id]||[]).some(a => norm(a) === norm(input));
+
+    function checkTypeIn(accepted, input) {
+      const n = norm(input);
+      return accepted.some(a => norm(a) === n);
     }
 
-    // ─── KEYBOARD ROWS ────────────────────────────────────────────────────────
-    const KB = [
-      [{l:"1",v:"1"},{l:"2",v:"2"},{l:"3",v:"3"},{l:"4",v:"4"},
-       {l:"5",v:"5"},{l:"6",v:"6"},{l:"7",v:"7"},{l:"8",v:"8"},
-       {l:"9",v:"9"},{l:"0",v:"0"},{l:".",v:"."},{l:"/",v:"/"},
-       {l:"(",v:"("},{l:")",v:")"},{l:"⌫",v:"BS",c:"sf-key-backspace"}],
-      [{l:"a",v:"a"},{l:"b",v:"b"},{l:"h",v:"h"},{l:"l",v:"l"},
-       {l:"r",v:"r"},{l:"θ",v:"θ",c:"sf-key-special"},
-       {l:"B",v:"B"},{l:"d₁",v:"d₁",c:"sf-key-special"},
-       {l:"d₂",v:"d₂",c:"sf-key-special"}],
-      [{l:"π",v:"π",c:"sf-key-special"},{l:"²",v:"²",c:"sf-key-special"},
-       {l:"³",v:"³",c:"sf-key-special"},{l:"½",v:"½",c:"sf-key-special"},
-       {l:"⅓",v:"⅓",c:"sf-key-special"},{l:"×",v:"×",c:"sf-key-special"},
-       {l:"÷",v:"÷",c:"sf-key-special"},{l:"+",v:"+"},{l:"-",v:"-"}],
-    ];
-
     // ─── DIFFICULTY ───────────────────────────────────────────────────────────
-    const DIFF = {warmup:{t:0},easy:{t:60},normal:{t:45},hard:{t:30},insane:{t:60}};
+    const DIFF = {warmup:{t:0},easy:{t:60},normal:{t:45},hard:{t:30},superhard:{t:60},insane:{t:60}};
 
     // ─── DOM REFS ─────────────────────────────────────────────────────────────
     const $  = id => document.getElementById(id);
@@ -471,7 +652,8 @@
     const feedbackEl= $("sf-feedback"),optionsEl = $("sf-options");
     const insaneArea= $("sf-insane-area"), insaneDisp=$("sf-insane-display");
     const insaneKbEl= $("sf-insane-keyboard"), varLegendEl=$("sf-var-legend");
-    const insaneClear=$("sf-insane-clear"),  insaneSubmit=$("sf-insane-submit");
+    const insaneClear=$("sf-insane-clear"), insaneSubmit=$("sf-insane-submit");
+    const insaneTitle=$("sf-insane-title");
     const nextBtn   = $("sf-next"),   resetBtn   = $("sf-reset");
     const fmDetails = $("sf-formula-details"), fmSummary=$("sf-formula-summary");
 
@@ -480,9 +662,12 @@
     let score=0, total=0, streak=0, qIdx=0;
     let timerID=null, timeLeft=0;
     let current=null, recentIds=[], insaneInput="";
+    let currentJumble=null; // result of makeJumble() for this question
 
-    const isWarmup = () => modeSel.value === "warmup";
-    const isInsane = () => modeSel.value === "insane";
+    const isWarmup    = () => modeSel.value === "warmup";
+    const isTypeIn    = () => modeSel.value === "superhard" || modeSel.value === "insane";
+    const isSuperHard = () => modeSel.value === "superhard";
+    const isInsane    = () => modeSel.value === "insane";
 
     // ─── AUDIO ────────────────────────────────────────────────────────────────
     const SFX = {
@@ -525,8 +710,7 @@
         const iv=setInterval(()=>{
           if(c>=cnt){clearInterval(iv);return;}
           const sp=document.createElement("span");
-          sp.className="sf-stream";
-          sp.textContent=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+          sp.className="sf-stream"; sp.textContent=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
           document.body.appendChild(sp);
           const sx=ox+(Math.random()-.5)*16, sy=oy+(Math.random()-.5)*16;
           const tx=W*.5+(Math.random()-.5)*W*.25, ty=H*.32+(Math.random()-.5)*H*.12;
@@ -568,7 +752,7 @@
     }
     function onTimeUp(){
       if(locked||isWarmup()||!inProgress)return;
-      feedbackEl.textContent=isInsane()
+      feedbackEl.textContent=isTypeIn()
         ?"⏰ Time's up! Submit now for 0.5 pts."
         :"⏰ Time's up! You can still answer for 0.5 pts.";
       play(aTup);
@@ -601,10 +785,38 @@
       return m?m[2].trim():String(f||"").trim();
     }
 
-    // ─── INSANE KEYBOARD ─────────────────────────────────────────────────────
+    // ─── KEYBOARD ─────────────────────────────────────────────────────────────
+    // Static rows (digits, symbols). Letter row is built dynamically per question.
+    const KB_DIGITS = [{l:"1",v:"1"},{l:"2",v:"2"},{l:"3",v:"3"},{l:"4",v:"4"},
+      {l:"5",v:"5"},{l:"6",v:"6"},{l:"7",v:"7"},{l:"8",v:"8"},
+      {l:"9",v:"9"},{l:"0",v:"0"},{l:".",v:"."},{l:"/",v:"/"},
+      {l:"(",v:"("},{l:")",v:")"},{l:"⌫",v:"BS",c:"sf-key-backspace"}];
+    const KB_SYMS = [{l:"π",v:"π",c:"sf-key-special"},{l:"²",v:"²",c:"sf-key-special"},
+      {l:"³",v:"³",c:"sf-key-special"},{l:"½",v:"½",c:"sf-key-special"},
+      {l:"⅓",v:"⅓",c:"sf-key-special"},{l:"×",v:"×",c:"sf-key-special"},
+      {l:"÷",v:"÷",c:"sf-key-special"},{l:"+",v:"+"},{l:"-",v:"-"}];
+
     function buildKeyboard(){
       insaneKbEl.innerHTML="";
-      KB.forEach(row=>{
+      // Build letter row from currentJumble vars (the assigned letters for this question)
+      const letterKeys = [];
+      if(currentJumble){
+        const seen=new Set();
+        // Use keyVars if defined (e.g. trapezium), otherwise fall back to vars
+        const source = currentJumble.keyVars || currentJumble.vars;
+        source.forEach(v=>{
+          const letter = String(v.s);
+          if(!seen.has(letter)){
+            seen.add(letter);
+            const isSpecial = letter==="θ"||letter==="B"||letter.length>1;
+            letterKeys.push({l:letter, v:letter, c: isSpecial?"sf-key-special":""});
+          }
+        });
+      }
+
+      const rows = [KB_DIGITS, letterKeys, KB_SYMS];
+      rows.forEach(row=>{
+        if(!row.length)return;
         const div=document.createElement("div");
         div.className="sf-kb-row";
         row.forEach(k=>{
@@ -621,28 +833,33 @@
         });
         insaneKbEl.appendChild(div);
       });
-      // tip line
       const tip=document.createElement("div");
-      tip.className="sf-insane-accepted";
       tip.style.cssText="margin-top:6px;font-size:.82rem;color:#a5b4fc;";
       tip.innerHTML="Tip: Use <strong>π</strong> or <strong>pi</strong>, <strong>²</strong> or <strong>^2</strong>, <strong>³</strong> or <strong>^3</strong>. Spaces ignored.";
       insaneKbEl.appendChild(tip);
     }
+
     function renderInsaneDisplay(){
       insaneDisp.textContent=insaneInput.length?insaneInput:"|";
     }
+
     function buildVarLegend(){
       varLegendEl.innerHTML="";
-      (current.vars||[]).forEach(v=>{
+      if(!currentJumble)return;
+      currentJumble.vars.forEach(v=>{
         const chip=document.createElement("span");
         chip.className="sf-var-chip";
         chip.innerHTML=`<strong>${v.s}</strong> = ${v.n}`;
         varLegendEl.appendChild(chip);
       });
     }
-    function showInsane(){
+
+    function showTypeIn(){
       optionsEl.style.display="none";
       insaneArea.style.display="block";
+      insaneTitle.textContent = isInsane()
+        ?"🔥 Jumbled letters! Type the formula (right-hand side only):"
+        :"✏️ Type the formula (right-hand side only):";
       insaneInput="";
       renderInsaneDisplay();
       insaneDisp.classList.remove("correct-flash","wrong-flash");
@@ -651,12 +868,13 @@
       insaneSubmit.disabled=false;
       insaneClear.disabled=false;
     }
-    function hideInsane(){
+
+    function hideTypeIn(){
       insaneArea.style.display="none";
       optionsEl.style.display="grid";
     }
 
-    // ─── CORRECT ANSWER REVEAL (used everywhere) ──────────────────────────────
+    // ─── CORRECT ANSWER REVEAL ────────────────────────────────────────────────
     function revealBox(formula){
       return `<span class="sf-correct-reveal">✔ Answer: ${formula}</span>`;
     }
@@ -670,7 +888,7 @@
       topicSel.disabled=true; modeSel.disabled=true;
       nextBtn.textContent="Next Question ▶"; nextBtn.disabled=true;
       $("sf-formula-details").open=false;
-      $("sf-instructions").textContent=isInsane()
+      $("sf-instructions").textContent=isTypeIn()
         ?"Type the formula (right-hand side only) using the keyboard below. (10 questions)"
         :"Memorise the formula — pick the correct one. (10 questions per quiz)";
       nextQ();
@@ -682,7 +900,7 @@
       metaEl.textContent=`Quiz finished (${TOTAL_QUESTIONS} questions)`;
       questionEl.textContent="—"; shapeEl.innerHTML="";
       optionsEl.innerHTML=""; hintEl.textContent="";
-      hideInsane();
+      hideTypeIn();
       timerEl.textContent=isWarmup()?"☕ Warm-Up (No Timer)":"⏱ –";
       feedbackEl.textContent=isWarmup()
         ?"✅ Warm-Up complete! (No score recorded.)"
@@ -693,9 +911,9 @@
 
     function resetQuiz(){
       stopTimer();inProgress=false;locked=false;attempted=false;
-      score=0;total=0;streak=0;qIdx=0;recentIds=[];
+      score=0;total=0;streak=0;qIdx=0;recentIds=[];currentJumble=null;
       topicSel.disabled=false; modeSel.disabled=false;
-      hideInsane(); updateScore();
+      hideTypeIn(); updateScore();
       metaEl.textContent="Ready";
       questionEl.textContent="—"; shapeEl.innerHTML="";
       optionsEl.innerHTML=""; hintEl.textContent="";
@@ -713,20 +931,36 @@
       feedbackEl.innerHTML="";optionsEl.innerHTML="";hintEl.textContent="";insaneInput="";
       qIdx++;
       metaEl.textContent=`Question ${qIdx} of ${TOTAL_QUESTIONS}`;
-      current=pickQ();
-      recentIds.push(current.id);
-      if(recentIds.length>RECENT_LIMIT)recentIds.shift();
-      questionEl.textContent=current.question;
-      shapeEl.innerHTML=shapeSVG(current.shape, isInsane());
 
-      if(isInsane()){
-        showInsane();
+      const base=pickQ();
+      recentIds.push(base.id);
+      if(recentIds.length>RECENT_LIMIT)recentIds.shift();
+
+      // Build jumble: Super Hard = identity (false = no jumble), Insane = true
+      const doJumble = isInsane();
+      const doTypeIn = isTypeIn();
+      currentJumble = doTypeIn ? makeJumble(base.id, doJumble) : null;
+
+      // Override current with jumbled formula/desc if in type-in mode
+      current = doTypeIn ? Object.assign({}, base, {
+        formula:    currentJumble.fullFormula,
+        desc:       currentJumble.vars.map(v=>`${v.s} = ${v.n}`).join(", "),
+      }) : base;
+
+      questionEl.textContent = current.question;
+
+      // SVG: pass svgArg (with letters) if type-in, otherwise false
+      const svgArg = doTypeIn ? currentJumble.svgArg : false;
+      shapeEl.innerHTML = shapeSVG(current.shape, svgArg);
+
+      if(doTypeIn){
+        showTypeIn();
       } else {
-        hideInsane();
-        buildOpts(current).forEach((opt,i)=>{
+        hideTypeIn();
+        buildOpts(base).forEach((opt,i)=>{
           const d=document.createElement("div");
           d.className="sf-option";
-          d.dataset.correct=opt.id===current.id?"1":"0";
+          d.dataset.correct=opt.id===base.id?"1":"0";
           d.innerHTML=`<div class="sf-letter">${LETTERS[i]||"?"}</div>
                        <div class="sf-opt-formula">${stripLHS(opt.formula)}</div>
                        <div class="sf-desc">${opt.desc}</div>`;
@@ -753,13 +987,8 @@
         locked=true;
         card.classList.add(ok?"correct":"wrong");
         revealCorrectCard();
-        if(ok){
-          feedbackEl.innerHTML="✅ Correct!";
-          confetti(2); play(aOk);
-        } else {
-          feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`;
-          play(aBad);
-        }
+        if(ok){ feedbackEl.innerHTML="✅ Correct!"; confetti(2); play(aOk); }
+        else  { feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`; play(aBad); }
         return;
       }
 
@@ -767,50 +996,27 @@
       locked=true; stopTimer(); total++;
 
       if(inTime){
-        if(ok){
-          score++;streak++;
-          feedbackEl.innerHTML="✅ Correct!";
-          card.classList.add("correct");
-          confetti(3); play(aOk);
-        } else {
-          streak=0;
-          feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`;
-          card.classList.add("wrong");
-          play(aBad);
-        }
+        if(ok){ score++;streak++; feedbackEl.innerHTML="✅ Correct!"; card.classList.add("correct"); confetti(3); play(aOk); }
+        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`; card.classList.add("wrong"); play(aBad); }
       } else {
-        if(ok){
-          score+=0.5;streak=0;
-          feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
-          card.classList.add("correct");
-          confetti(1); play(aOk);
-        } else {
-          streak=0;
-          feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`;
-          card.classList.add("wrong");
-          play(aBad);
-        }
+        if(ok){ score+=0.5;streak=0; feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts."; card.classList.add("correct"); confetti(1); play(aOk); }
+        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`; card.classList.add("wrong"); play(aBad); }
       }
       updateScore();
       revealCorrectCard();
     }
 
-    // ─── INSANE SUBMIT HANDLER ────────────────────────────────────────────────
-    function submitInsane(){
+    // ─── TYPE-IN SUBMIT HANDLER ───────────────────────────────────────────────
+    function submitTypeIn(){
       if(locked||!inProgress)return;
-      const ok=checkInsane(current.id, insaneInput);
+      const ok = currentJumble ? checkTypeIn(currentJumble.accepted, insaneInput) : false;
       attempted=true; nextBtn.disabled=false;
 
       if(isWarmup()){
         locked=true;
         insaneDisp.classList.add(ok?"correct-flash":"wrong-flash");
-        if(ok){
-          feedbackEl.innerHTML="✅ Correct!";
-          confetti(2); play(aOk);
-        } else {
-          feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`;
-          play(aBad);
-        }
+        if(ok){ feedbackEl.innerHTML="✅ Correct!"; confetti(2); play(aOk); }
+        else  { feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`; play(aBad); }
         insaneSubmit.disabled=true; insaneClear.disabled=true;
         return;
       }
@@ -819,29 +1025,11 @@
       locked=true; stopTimer(); total++;
 
       if(inTime){
-        if(ok){
-          score++;streak++;
-          feedbackEl.innerHTML="✅ Correct! +1 pt";
-          insaneDisp.classList.add("correct-flash");
-          confetti(3); play(aOk);
-        } else {
-          streak=0;
-          feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`;
-          insaneDisp.classList.add("wrong-flash");
-          play(aBad);
-        }
+        if(ok){ score++;streak++; feedbackEl.innerHTML="✅ Correct! +1 pt"; insaneDisp.classList.add("correct-flash"); confetti(3); play(aOk); }
+        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`; insaneDisp.classList.add("wrong-flash"); play(aBad); }
       } else {
-        if(ok){
-          score+=0.5;streak=0;
-          feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
-          insaneDisp.classList.add("correct-flash");
-          confetti(1); play(aOk);
-        } else {
-          streak=0;
-          feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`;
-          insaneDisp.classList.add("wrong-flash");
-          play(aBad);
-        }
+        if(ok){ score+=0.5;streak=0; feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts."; insaneDisp.classList.add("correct-flash"); confetti(1); play(aOk); }
+        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`; insaneDisp.classList.add("wrong-flash"); play(aBad); }
       }
       updateScore();
       insaneSubmit.disabled=true; insaneClear.disabled=true;
@@ -864,7 +1052,7 @@
     }
 
     // ─── EVENTS ───────────────────────────────────────────────────────────────
-    insaneSubmit.addEventListener("click", submitInsane);
+    insaneSubmit.addEventListener("click", submitTypeIn);
     insaneClear.addEventListener("click", ()=>{
       if(locked)return;
       insaneInput=""; renderInsaneDisplay();
@@ -873,21 +1061,18 @@
 
     if(fmSummary){
       fmSummary.addEventListener("click", e=>{
-        if(fmDetails.open)return;      // closing — allow
-        if(isWarmup())return;          // warm-up — free
+        if(fmDetails.open)return;
+        if(isWarmup())return;
         if(!window.confirm("⚠️ Opening the Formula Sheet deducts 0.5 marks.\n\nOpen it?"))
           {e.preventDefault();return;}
-        if(inProgress){
-          score-=0.5; updateScore();
-          feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";
-        }
+        if(inProgress){ score-=0.5; updateScore(); feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";}
       });
     }
 
     nextBtn.addEventListener("click", ()=>{
       if(!inProgress){startQuiz();return;}
       if(!attempted){
-        feedbackEl.textContent=isInsane()
+        feedbackEl.textContent=isTypeIn()
           ?"⚠️ Please type and submit an answer first."
           :"⚠️ Please attempt this question first — no skipping.";
         return;
