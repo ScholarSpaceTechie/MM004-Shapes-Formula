@@ -114,6 +114,9 @@
       .sf-option:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.65);box-shadow:0 10px 24px rgba(0,0,0,.45);}
       .sf-option.correct{border-color:rgba(34,197,94,.9)!important;box-shadow:0 0 0 2px rgba(34,197,94,.25),0 14px 28px rgba(0,0,0,.45);}
       .sf-option.wrong{border-color:rgba(239,68,68,.9)!important;box-shadow:0 0 0 2px rgba(239,68,68,.2),0 14px 28px rgba(0,0,0,.45);}
+      .sf-option.correction-chance{border-color:rgba(250,204,21,.9)!important;box-shadow:0 0 0 2px rgba(250,204,21,.25),0 14px 28px rgba(0,0,0,.45);animation:sf-pulse-yellow .6s ease-in-out;}
+      @keyframes sf-pulse-yellow{0%,100%{box-shadow:0 0 0 2px rgba(250,204,21,.25);}50%{box-shadow:0 0 0 6px rgba(250,204,21,.45);}}
+      .sf-option.dimmed{opacity:.4;pointer-events:none;}
       .sf-letter{position:absolute;left:12px;top:10px;width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;border:1px solid rgba(148,163,184,.35);background:rgba(2,6,23,.65);color:#e5e7eb;}
       .sf-opt-formula{font-size:1.08rem;font-weight:700;letter-spacing:.2px;}
       .sf-desc{margin-top:6px;font-size:.88rem;opacity:.85;line-height:1.25;}
@@ -156,6 +159,24 @@
       .sf-confetti{position:fixed;z-index:99999;pointer-events:none;animation:sf-fall 1.8s ease-out forwards;font-size:1.7rem;}
       @keyframes sf-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}10%{opacity:1;}100%{transform:translateY(110vh) rotate(340deg);opacity:0;}}
       .sf-stream{position:fixed;z-index:99999;pointer-events:none;font-size:1.7rem;user-select:none;will-change:transform,opacity;}
+      /* ── Mistake Report Modal ── */
+      .sf-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99998;display:flex;align-items:center;justify-content:center;padding:16px;}
+      .sf-modal{background:#0b1220;border:1px solid rgba(148,163,184,.3);border-radius:18px;max-width:620px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.7);}
+      .sf-modal-title{font-size:1.25rem;font-weight:800;margin-bottom:16px;color:#e5e7eb;}
+      .sf-mistake-item{margin-bottom:14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(239,68,68,.35);background:rgba(30,8,8,.55);}
+      .sf-mistake-q{font-size:.95rem;font-weight:700;color:#fca5a5;margin-bottom:6px;}
+      .sf-mistake-row{font-size:.9rem;line-height:1.5;}
+      .sf-mistake-wrong{color:#f87171;}
+      .sf-mistake-right{color:#86efac;}
+      .sf-no-mistakes{color:#86efac;font-size:1rem;font-weight:700;text-align:center;padding:16px 0;}
+      .sf-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+      .sf-whatsapp-btn{display:flex;align-items:center;gap:8px;background:#25D366;color:#fff;border:none;border-radius:999px;padding:10px 20px;font-weight:700;font-size:.95rem;cursor:pointer;}
+      .sf-whatsapp-btn:hover{background:#1ebe5d;transform:translateY(-1px);}
+      .sf-copy-btn{display:flex;align-items:center;gap:8px;background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.55);color:#c7d2fe;border-radius:999px;padding:10px 20px;font-weight:700;font-size:.95rem;cursor:pointer;}
+      .sf-copy-btn:hover{background:rgba(99,102,241,.4);}
+      .sf-modal-close{margin-left:auto;background:rgba(148,163,184,.15);border:1px solid rgba(148,163,184,.3);color:#e5e7eb;border-radius:999px;padding:10px 20px;font-weight:700;cursor:pointer;}
+      .sf-modal-close:hover{background:rgba(148,163,184,.25);}
+      .sf-correction-badge{display:inline-block;background:rgba(250,204,21,.18);border:1px solid rgba(250,204,21,.55);color:#fef08a;border-radius:6px;padding:1px 8px;font-size:.82rem;font-weight:700;margin-left:6px;}
       @media(max-width:820px){.sf-options{grid-template-columns:1fr;}.sf-sheet-grid{grid-template-columns:1fr;}.sf-shape svg{width:160px;}.sf-insane-display{font-size:1.2rem;}}
     `;
     document.head.appendChild(style);
@@ -168,7 +189,6 @@
     const RECENT_LIMIT    = 18;
 
     // ─── LETTER POOL FOR JUMBLING ─────────────────────────────────────────────
-    // Letters available for jumbling (excluding θ, B, π which are always fixed)
     const JPOOL = ["a","b","c","d","e","f","g","h","i","j","k","m","n","p","q","s","t","u","v","w","x","y","z"];
 
     function shuffle(arr) {
@@ -177,7 +197,6 @@
       return a;
     }
 
-    // Pick n distinct letters from JPOOL, excluding any in 'exclude' array
     function pickLetters(n, exclude) {
       const ex = new Set((exclude||[]).map(x=>x.toLowerCase()));
       const pool = JPOOL.filter(l=>!ex.has(l));
@@ -185,9 +204,6 @@
     }
 
     // ─── ALL-PERMUTATIONS HELPER ─────────────────────────────────────────────
-    // Returns every ordering of `factors` joined together as strings.
-    // e.g. allPerms(["π","r²","h"]) → ["πr²h","πhr²","r²πh","r²hπ","hr²π","hπr²"]
-    // This ensures any commutative multiplication order is accepted.
     function allPerms(factors) {
       if (factors.length <= 1) return factors.length ? [factors[0]] : [""];
       const result = [];
@@ -198,20 +214,24 @@
       return [...new Set(result)];
     }
 
+    // ─── EXPAND WITH × VARIANTS ──────────────────────────────────────────────
+    // Given an array of accepted strings, also add versions with explicit × or * between factors
+    function withMultVariants(accepted) {
+      const extras = [];
+      accepted.forEach(s => {
+        // Add version with explicit * between consecutive alphanumeric/special tokens
+        // e.g. "πr²h" → also accept "π*r²*h", "π×r²×h"
+        const starred = s.replace(/([a-zθπ²³½⅓0-9\)])\s*([a-zθπ(½⅓])/gi, '$1*$2');
+        const crossed = s.replace(/([a-zθπ²³½⅓0-9\)])\s*([a-zθπ(½⅓])/gi, '$1×$2');
+        if (starred !== s) extras.push(starred);
+        if (crossed !== s) extras.push(crossed);
+      });
+      return [...new Set([...accepted, ...extras])];
+    }
+
     // ─── PER-SHAPE JUMBLE GENERATORS ─────────────────────────────────────────
-    // Each returns a map of { canonical_var: assigned_letter, ... }
-    // and a `vars` array for the legend, and helper functions.
-    // In Super Hard mode: map is identity (canonical letters).
-    // In Insane mode: map is randomised.
-
     function makeJumble(id, jumble) {
-      // Returns { map, vars, formula, fullFormula, accepted, svgArg }
-      // 'jumble' = true for Insane mode, false for Super Hard
-
       function assign(originals, names, fixed) {
-        // originals: array of canonical letter strings
-        // names: array of human names (same length)
-        // fixed: array of letters that must stay fixed (e.g. "θ","B","π")
         const fixedSet = new Set((fixed||[]).map(s=>String(s)));
         const toJumble = originals.filter(l=>!fixedSet.has(String(l)));
         let assigned;
@@ -235,14 +255,14 @@
         case "sq_per": {
           const {map,vars} = assign(["l"],["Side length"],[]);
           const L = map["l"];
+          const areaAccepted = withMultVariants([`${L}²`,`${L}^2`,`${L}*${L}`,`${L}×${L}`,`${L}${L}`]);
+          const perAccepted  = withMultVariants(allPerms(["4",L]).concat(allPerms(["4","*",L])).concat(allPerms(["4","×",L])));
           return {
             map, vars,
             svgArg: { shape:"square", L },
             formula:     id==="sq_area" ? `${L}²`    : `4${L}`,
             fullFormula: id==="sq_area" ? `A = ${L}²` : `P = 4${L}`,
-            accepted: id==="sq_area"
-              ? [`${L}²`,`${L}^2`,`${L}*${L}`,`${L}${L}`]
-              : allPerms(["4",L]).concat(allPerms(["4","*",L])),
+            accepted: id==="sq_area" ? areaAccepted : perAccepted,
           };
         }
 
@@ -251,14 +271,14 @@
         case "rect_per": {
           const {map,vars} = assign(["l","b"],["Length","Breadth"],[]);
           const L=map["l"], B=map["b"];
+          const areaAccepted = withMultVariants(allPerms([L,B]));
+          const perAccepted  = [`2(${L}+${B})`,`2(${B}+${L})`,`2${L}+2${B}`,`2${B}+2${L}`,`2*(${L}+${B})`,`2*(${B}+${L})`,`2×(${L}+${B})`,`2×(${B}+${L})`];
           return {
             map, vars,
             svgArg: { shape:"rectangle", L, B },
             formula:     id==="rect_area" ? `${L}${B}`        : `2(${L} + ${B})`,
             fullFormula: id==="rect_area" ? `A = ${L}${B}`    : `P = 2(${L} + ${B})`,
-            accepted: id==="rect_area"
-              ? allPerms([L,B])
-              : [`2(${L}+${B})`,`2(${B}+${L})`,`2${L}+2${B}`,`2${B}+2${L}`],
+            accepted: id==="rect_area" ? areaAccepted : withMultVariants(perAccepted),
           };
         }
 
@@ -266,15 +286,15 @@
         case "tri_area": {
           const {map,vars} = assign(["b","h"],["Base","Height"],[]);
           const B=map["b"], H=map["h"];
-          // factors: ½, B, H — all orderings
           const fracs = ["½","1/2","0.5"];
+          const base = fracs.flatMap(f => allPerms([f,B,H]))
+            .concat([`${B}${H}/2`,`${H}${B}/2`,`${B}*${H}/2`,`${H}*${B}/2`,`${B}×${H}/2`,`${H}×${B}/2`]);
           return {
             map, vars,
             svgArg: { shape:"triangle", B, H },
             formula:     `½${B}${H}`,
             fullFormula: `A = ½${B}${H}`,
-            accepted: fracs.flatMap(f => allPerms([f,B,H]))
-              .concat([`${B}${H}/2`,`${H}${B}/2`,`${B}*${H}/2`,`${H}*${B}/2`]),
+            accepted: withMultVariants(base),
           };
         }
 
@@ -284,17 +304,18 @@
           const lTop=map["a"], lBot=map["b"], lH=map["c"], lSlant=map["d"], lSlant2=map["e"];
           const fracs = ["½","1/2","0.5"];
           const sums  = [`(${lTop}+${lBot})`,`(${lBot}+${lTop})`];
+          const base = fracs.flatMap(f => sums.flatMap(s => allPerms([f,s,lH])))
+            .concat(sums.flatMap(s => [`${s}${lH}/2`,`${s}*${lH}/2`,`${s}×${lH}/2`,`${s}${lH}/2`]));
           return {
             map,
-            vars: [],   // no legend chips — students identify all sides themselves
-            keyVars: [  // all 5 letters on the keyboard
+            vars: [],
+            keyVars: [
               { s:lTop }, { s:lBot }, { s:lH }, { s:lSlant }, { s:lSlant2 },
             ],
             svgArg: { shape:"trapezium", lTop, lBot, lH, lSlant, lSlant2 },
             formula:     `½(${lTop} + ${lBot})${lH}`,
             fullFormula: `A = ½(${lTop} + ${lBot})${lH}`,
-            accepted: fracs.flatMap(f => sums.flatMap(s => allPerms([f,s,lH])))
-              .concat(sums.flatMap(s => [`${s}${lH}/2`,`${s}*${lH}/2`,`${s}${lH}/2`])),
+            accepted: withMultVariants(base),
           };
         }
 
@@ -303,28 +324,28 @@
         case "sector_arc": {
           const {map,vars} = assign(["r","θ"],["Radius","Angle (°)"],["θ"]);
           const R=map["r"];
-          // sector area factors: θ/360, π, R²  — generate all orderings of the 3 factors
-          // sector arc  factors: θ/360, 2π, R  — generate all orderings of the 3 factors
           const piVars = ["π","pi"];
+          const areaBase = piVars.flatMap(pi =>
+            allPerms([`(θ/360)`,`${pi}`,`${R}²`])
+            .concat(allPerms([`θ/360`,`${pi}`,`${R}²`]))
+            .concat(allPerms([`θ÷360`,`${pi}`,`${R}²`]))
+            .concat(allPerms([`(θ/360)`,`${pi}`,`${R}^2`]))
+            .concat(allPerms([`θ/360`,`${pi}`,`${R}^2`]))
+          );
+          const arcBase = piVars.flatMap(pi =>
+            allPerms([`(θ/360)`,`2`,`${pi}`,`${R}`])
+            .concat(allPerms([`θ/360`,`2${pi}`,`${R}`]))
+            .concat(allPerms([`θ÷360`,`2${pi}`,`${R}`]))
+            .concat(allPerms([`(θ/360)`,`2${pi}`,`${R}`]))
+          );
           return {
             map, vars,
             svgArg: { shape:"sector", R },
             formula:     id==="sector_area" ? `(θ/360)π${R}²`    : `(θ/360)2π${R}`,
             fullFormula: id==="sector_area" ? `A = (θ/360)π${R}²` : `L = (θ/360)2π${R}`,
             accepted: id==="sector_area"
-              ? piVars.flatMap(pi =>
-                  allPerms([`(θ/360)`,`${pi}`,`${R}²`])
-                  .concat(allPerms([`θ/360`,`${pi}`,`${R}²`]))
-                  .concat(allPerms([`θ÷360`,`${pi}`,`${R}²`]))
-                  .concat(allPerms([`(θ/360)`,`${pi}`,`${R}^2`]))
-                  .concat(allPerms([`θ/360`,`${pi}`,`${R}^2`]))
-                )
-              : piVars.flatMap(pi =>
-                  allPerms([`(θ/360)`,`2`,`${pi}`,`${R}`])
-                  .concat(allPerms([`θ/360`,`2${pi}`,`${R}`]))
-                  .concat(allPerms([`θ÷360`,`2${pi}`,`${R}`]))
-                  .concat(allPerms([`(θ/360)`,`2${pi}`,`${R}`]))
-                ),
+              ? withMultVariants(areaBase)
+              : withMultVariants(arcBase),
           };
         }
 
@@ -335,18 +356,28 @@
           const fracs = ["⅓","1/3"];
           const pairs = [`${P}${Q}`,`${Q}${P}`,`${P}*${Q}`,`${Q}*${P}`,`${P}×${Q}`,`${Q}×${P}`];
           const parenPairs = pairs.map(pq=>`(${pq})`);
+          // Also allow l*b*h style (using assigned letters)
+          const lbhPerms = allPerms([P,Q,H]).concat(
+            allPerms([P,Q,H]).map(s => s.replace(new RegExp(`(?<=[${P}${Q}${H}])(?=[${P}${Q}${H}])`,'g'),'*')),
+            allPerms([P,Q,H]).map(s => s.replace(new RegExp(`(?<=[${P}${Q}${H}])(?=[${P}${Q}${H}])`,'g'),'×'))
+          );
+          const base = [
+            ...fracs.flatMap(f => pairs.flatMap(pq  => allPerms([f,pq,H]))),
+            ...fracs.flatMap(f => parenPairs.flatMap(pq => allPerms([f,pq,H]))),
+            ...pairs.map(pq => `${pq}${H}/3`),
+            ...pairs.map(pq => `(${pq})${H}/3`),
+            ...pairs.map(pq => `${pq}*${H}/3`),
+            ...pairs.map(pq => `${pq}×${H}/3`),
+            // 1/3 * l * b * h style
+            ...fracs.flatMap(f => lbhPerms.map(s => `${f}*${s}`)),
+            ...fracs.flatMap(f => lbhPerms.map(s => `${f}${s}`)),
+          ].filter((v,i,a)=>a.indexOf(v)===i);
           return {
             map, vars,
             svgArg: { shape:"pyramid", P, Q, H, S:map["s"] },
             formula:     `⅓(${P}×${Q})${H}`,
             fullFormula: `V = ⅓(${P}×${Q})${H}`,
-            accepted: [
-              ...fracs.flatMap(f => pairs.flatMap(pq  => allPerms([f,pq,H]))),
-              ...fracs.flatMap(f => parenPairs.flatMap(pq => allPerms([f,pq,H]))),
-              ...pairs.map(pq => `${pq}${H}/3`),
-              ...pairs.map(pq => `(${pq})${H}/3`),
-              ...pairs.map(pq => `${pq}*${H}/3`),
-            ].filter((v,i,a)=>a.indexOf(v)===i),
+            accepted: withMultVariants(base),
           };
         }
 
@@ -356,25 +387,30 @@
           const {map,vars} = assign(["r","h","l"],["Radius","Height","Slant height"],[]);
           const R=map["r"], H=map["h"], L=map["l"];
           const piVars = ["π","pi"];
+          const volBase = ["⅓","1/3"].flatMap(f =>
+            piVars.flatMap(pi => [
+              ...allPerms([f,`${pi}`,`${R}²`,H]),
+              ...allPerms([f,`${pi}`,`${R}^2`,H]),
+              ...allPerms([f,`${pi}`,`${R}*${R}`,H]),
+              ...allPerms([f,`${pi}`,`${R}×${R}`,H]),
+            ])
+          ).concat(
+            piVars.flatMap(pi => [
+              `${pi}${R}²${H}/3`,`${pi}${R}^2${H}/3`,
+              `${pi}${H}${R}²/3`,`${pi}${H}${R}^2/3`,
+              `${R}²${H}${pi}/3`,`${R}^2${H}${pi}/3`,
+              `${pi}*${R}*${R}*${H}/3`,`${pi}×${R}×${R}×${H}/3`,
+            ])
+          );
+          const csaBase = piVars.flatMap(pi => allPerms([`${pi}`,R,L]));
           return {
             map, vars,
             svgArg: { shape:"cone", R, H, L },
             formula:     id==="cone_vol" ? `⅓π${R}²${H}` : `π${R}${L}`,
             fullFormula: id==="cone_vol" ? `V = ⅓π${R}²${H}` : `CSA = π${R}${L}`,
             accepted: id==="cone_vol"
-              ? ["⅓","1/3"].flatMap(f =>
-                  piVars.flatMap(pi => [
-                    ...allPerms([f,`${pi}`,`${R}²`,H]),
-                    ...allPerms([f,`${pi}`,`${R}^2`,H]),
-                  ])
-                ).concat(
-                  piVars.flatMap(pi => [
-                    `${pi}${R}²${H}/3`,`${pi}${R}^2${H}/3`,
-                    `${pi}${H}${R}²/3`,`${pi}${H}${R}^2/3`,
-                    `${R}²${H}${pi}/3`,`${R}^2${H}${pi}/3`,
-                  ])
-                )
-              : piVars.flatMap(pi => allPerms([`${pi}`,R,L])),
+              ? withMultVariants(volBase)
+              : withMultVariants(csaBase),
           };
         }
 
@@ -383,28 +419,30 @@
         case "cuboid_sa": {
           const {map,vars} = assign(["l","b","h"],["Length","Breadth","Height"],[]);
           const L=map["l"], B=map["b"], H=map["h"];
+          const volBase = allPerms([L,B,H]);
+          const saBase = (()=>{
+            const fp = [[L,B],[L,H],[B,H]];
+            const facePairs = fp.map(([x,y])=>[`${x}${y}`,`${y}${x}`,`${x}*${y}`,`${y}*${x}`,`${x}×${y}`,`${y}×${x}`]);
+            const results = [];
+            for(const a of facePairs[0]) for(const b of facePairs[1]) for(const c of facePairs[2]) {
+              const perms = [[a,b,c],[a,c,b],[b,a,c],[b,c,a],[c,a,b],[c,b,a]];
+              for(const [x,y,z] of perms) {
+                results.push(`2(${x}+${y}+${z})`);
+                results.push(`2${x}+2${y}+2${z}`);
+                results.push(`2*(${x}+${y}+${z})`);
+                results.push(`2×(${x}+${y}+${z})`);
+              }
+            }
+            return [...new Set(results)];
+          })();
           return {
             map, vars,
             svgArg: { shape:"cuboid", L, B, H },
             formula:     id==="cuboid_vol" ? `${L}${B}${H}`               : `2(${L}${B} + ${L}${H} + ${B}${H})`,
             fullFormula: id==="cuboid_vol" ? `V = ${L}${B}${H}`           : `SA = 2(${L}${B} + ${L}${H} + ${B}${H})`,
             accepted: id==="cuboid_vol"
-              ? allPerms([L,B,H])
-              : (()=>{
-                  // all 6 orderings of the three face-pair sums inside 2(...)
-                  const fp = [[L,B],[L,H],[B,H]];
-                  const facePairs = fp.map(([x,y])=>[`${x}${y}`,`${y}${x}`]);
-                  // generate all 6 orderings of the 3 pairs (each pair can be either orientation)
-                  const results = [];
-                  for(const a of facePairs[0]) for(const b of facePairs[1]) for(const c of facePairs[2]) {
-                    const perms = [[a,b,c],[a,c,b],[b,a,c],[b,c,a],[c,a,b],[c,b,a]];
-                    for(const [x,y,z] of perms) {
-                      results.push(`2(${x}+${y}+${z})`);
-                      results.push(`2${x}+2${y}+2${z}`);
-                    }
-                  }
-                  return [...new Set(results)];
-                })(),
+              ? withMultVariants(volBase)
+              : withMultVariants(saBase),
           };
         }
 
@@ -414,18 +452,23 @@
           const {map,vars} = assign(["r","h"],["Radius","Height"],[]);
           const R=map["r"], H=map["h"];
           const piVars = ["π","pi"];
+          const volBase = piVars.flatMap(pi => [
+            ...allPerms([`${pi}`,`${R}²`,H]),
+            ...allPerms([`${pi}`,`${R}^2`,H]),
+            ...allPerms([`${pi}`,`${R}*${R}`,H]),
+            ...allPerms([`${pi}`,`${R}×${R}`,H]),
+          ]);
+          const csaBase = piVars.flatMap(pi =>
+            allPerms([`2${pi}`,R,H]).concat(allPerms([`2`,`${pi}`,R,H]))
+          );
           return {
             map, vars,
             svgArg: { shape:"cylinder", R, H },
             formula:     id==="cyl_vol" ? `π${R}²${H}` : `2π${R}${H}`,
             fullFormula: id==="cyl_vol" ? `V = π${R}²${H}` : `CSA = 2π${R}${H}`,
             accepted: id==="cyl_vol"
-              ? piVars.flatMap(pi => [
-                  ...allPerms([`${pi}`,`${R}²`,H]),
-                  ...allPerms([`${pi}`,`${R}^2`,H]),
-                ])
-              : piVars.flatMap(pi => allPerms([`2${pi}`,R,H])
-                  .concat(allPerms([`2`,`${pi}`,R,H]))),
+              ? withMultVariants(volBase)
+              : withMultVariants(csaBase),
           };
         }
 
@@ -435,26 +478,31 @@
           const {map,vars} = assign(["r"],["Radius"],[]);
           const R=map["r"];
           const piVars = ["π","pi"];
+          const volBase = piVars.flatMap(pi => [
+            ...allPerms([`4/3`,`${pi}`,`${R}³`]),
+            ...allPerms([`4/3`,`${pi}`,`${R}^3`]),
+            ...allPerms([`(4/3)`,`${pi}`,`${R}³`]),
+            ...allPerms([`(4/3)`,`${pi}`,`${R}^3`]),
+            ...allPerms([`4/3`,`${pi}`,`${R}*${R}*${R}`]),
+            `4${pi}${R}³/3`,`4${pi}${R}^3/3`,
+            `${pi}*4*${R}³/3`,`4*${pi}*${R}³/3`,
+          ]);
+          const saBase = piVars.flatMap(pi => [
+            ...allPerms([`4${pi}`,`${R}²`]),
+            ...allPerms([`4${pi}`,`${R}^2`]),
+            ...allPerms([`4`,`${pi}`,`${R}²`]),
+            ...allPerms([`4`,`${pi}`,`${R}^2`]),
+            ...allPerms([`4${pi}`,`${R}*${R}`]),
+            ...allPerms([`4`,`${pi}`,`${R}*${R}`]),
+          ]);
           return {
             map, vars,
             svgArg: { shape:"sphere", R },
             formula:     id==="sphere_vol" ? `4/3 π${R}³` : `4π${R}²`,
             fullFormula: id==="sphere_vol" ? `V = 4/3 π${R}³` : `SA = 4π${R}²`,
             accepted: id==="sphere_vol"
-              ? piVars.flatMap(pi => [
-                  ...allPerms([`4/3`,`${pi}`,`${R}³`]),
-                  ...allPerms([`4/3`,`${pi}`,`${R}^3`]),
-                  ...allPerms([`(4/3)`,`${pi}`,`${R}³`]),
-                  ...allPerms([`(4/3)`,`${pi}`,`${R}^3`]),
-                  `4${pi}${R}³/3`,`4${pi}${R}^3/3`,
-                  `${pi}*4*${R}³/3`,`4*${pi}*${R}³/3`,
-                ])
-              : piVars.flatMap(pi => [
-                  ...allPerms([`4${pi}`,`${R}²`]),
-                  ...allPerms([`4${pi}`,`${R}^2`]),
-                  ...allPerms([`4`,`${pi}`,`${R}²`]),
-                  ...allPerms([`4`,`${pi}`,`${R}^2`]),
-                ]),
+              ? withMultVariants(volBase)
+              : withMultVariants(saBase),
           };
         }
 
@@ -463,7 +511,6 @@
     }
 
     // ─── SVG DIAGRAMS ─────────────────────────────────────────────────────────
-    // lm = false/null (no labels) | object with shape-specific letter keys
     function shapeSVG(key, lm) {
       const S  = "rgba(255,255,255,.88)";
       const F  = "rgba(255,255,255,.08)";
@@ -660,9 +707,17 @@
     // ─── STATE ────────────────────────────────────────────────────────────────
     let inProgress=false, locked=false, attempted=false;
     let score=0, total=0, streak=0, qIdx=0;
+    let correctCount=0, correctionCount=0; // for C2 scoring
     let timerID=null, timeLeft=0;
     let current=null, recentIds=[], insaneInput="";
-    let currentJumble=null; // result of makeJumble() for this question
+    let currentJumble=null;
+
+    // ── Mistake report tracking ──
+    // Each entry: { qNum, question, wrongOption, wrongFormula, correctFormula, wasCorrection }
+    let mistakeLog = [];
+    // Per-question correction state
+    let firstAttemptWrong = false;   // true if student got it wrong first time
+    let correctionUsed    = false;   // true if the 1 correction chance was used
 
     const isWarmup    = () => modeSel.value === "warmup";
     const isTypeIn    = () => modeSel.value === "superhard" || modeSel.value === "insane";
@@ -734,7 +789,11 @@
 
     // ─── SCORE / TIMER ────────────────────────────────────────────────────────
     function updateScore(){
-      scoreEl.textContent=`Score: ${score} / ${total}`;
+      // Display as "Score: 8C2 / 10" style
+      const scoreStr = isWarmup()
+        ? `Score: –`
+        : `Score: ${correctCount}C${correctionCount} / ${total}`;
+      scoreEl.textContent = scoreStr;
       streakEl.textContent=`Streak: ${streak} 🔥`;
     }
     function stopTimer(){if(timerID)clearInterval(timerID);timerID=null;}
@@ -786,7 +845,6 @@
     }
 
     // ─── KEYBOARD ─────────────────────────────────────────────────────────────
-    // Static rows (digits, symbols). Letter row is built dynamically per question.
     const KB_DIGITS = [{l:"1",v:"1"},{l:"2",v:"2"},{l:"3",v:"3"},{l:"4",v:"4"},
       {l:"5",v:"5"},{l:"6",v:"6"},{l:"7",v:"7"},{l:"8",v:"8"},
       {l:"9",v:"9"},{l:"0",v:"0"},{l:".",v:"."},{l:"/",v:"/"},
@@ -798,11 +856,9 @@
 
     function buildKeyboard(){
       insaneKbEl.innerHTML="";
-      // Build letter row from currentJumble vars (the assigned letters for this question)
       const letterKeys = [];
       if(currentJumble){
         const seen=new Set();
-        // Use keyVars if defined (e.g. trapezium), otherwise fall back to vars
         const source = currentJumble.keyVars || currentJumble.vars;
         source.forEach(v=>{
           const letter = String(v.s);
@@ -879,9 +935,113 @@
       return `<span class="sf-correct-reveal">✔ Answer: ${formula}</span>`;
     }
 
+    // ─── MISTAKE REPORT MODAL ─────────────────────────────────────────────────
+    function buildReportText() {
+      const mode = modeSel.options[modeSel.selectedIndex].text;
+      const topic = topicSel.options[topicSel.selectedIndex].text;
+      const scoreStr = `${correctCount}C${correctionCount} / ${TOTAL_QUESTIONS}`;
+      let lines = [];
+      lines.push(`📊 Shapes & Formulas Quiz Report`);
+      lines.push(`Topic: ${topic} | Mode: ${mode}`);
+      lines.push(`Final Score: ${scoreStr}`);
+      lines.push(``);
+      if (mistakeLog.length === 0) {
+        lines.push(`🎉 Perfect score — no mistakes!`);
+      } else {
+        lines.push(`❌ Mistakes (${mistakeLog.length}):`);
+        mistakeLog.forEach((m, i) => {
+          lines.push(``);
+          lines.push(`Q${m.qNum}: ${m.question}`);
+          lines.push(`  ✗ Selected: ${m.wrongFormula}${m.wasCorrection ? " (2nd attempt)" : ""}`);
+          lines.push(`  ✓ Correct: ${m.correctFormula}`);
+        });
+      }
+      lines.push(``);
+      lines.push(`— Shapes & Formula Game (MM004)`);
+      return lines.join("\n");
+    }
+
+    function showMistakeReport() {
+      // Remove any existing modal
+      const existing = document.getElementById("sf-mistake-modal");
+      if (existing) existing.remove();
+
+      const overlay = document.createElement("div");
+      overlay.className = "sf-modal-overlay";
+      overlay.id = "sf-mistake-modal";
+
+      const hasMistakes = mistakeLog.length > 0;
+      const scoreStr = `${correctCount}C${correctionCount} / ${TOTAL_QUESTIONS}`;
+
+      let mistakesHTML = "";
+      if (!hasMistakes) {
+        mistakesHTML = `<div class="sf-no-mistakes">🎉 No mistakes — perfect quiz!</div>`;
+      } else {
+        mistakesHTML = mistakeLog.map(m => `
+          <div class="sf-mistake-item">
+            <div class="sf-mistake-q">Q${m.qNum}: ${m.question}</div>
+            <div class="sf-mistake-row">
+              <span class="sf-mistake-wrong">✗ You selected: ${m.wrongFormula}</span>
+              ${m.wasCorrection ? `<span class="sf-correction-badge">2nd attempt</span>` : ""}
+            </div>
+            <div class="sf-mistake-row">
+              <span class="sf-mistake-right">✓ Correct answer: ${m.correctFormula}</span>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      overlay.innerHTML = `
+        <div class="sf-modal">
+          <div class="sf-modal-title">📋 Quiz Report — Score: ${scoreStr}</div>
+          ${mistakesHTML}
+          <div class="sf-modal-actions">
+            <button class="sf-whatsapp-btn" id="sf-wa-share">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.547 5.874L.057 23.5l5.744-1.505A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.002-1.366l-.359-.214-3.409.894.91-3.32-.234-.38A9.818 9.818 0 1 1 12 21.818z"/></svg>
+              Share on WhatsApp
+            </button>
+            <button class="sf-copy-btn" id="sf-copy-report">
+              📋 Copy Report
+            </button>
+            <button class="sf-modal-close" id="sf-modal-close">Close ✕</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      document.getElementById("sf-modal-close").addEventListener("click", () => overlay.remove());
+      overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+      document.getElementById("sf-wa-share").addEventListener("click", () => {
+        const text = encodeURIComponent(buildReportText());
+        window.open(`https://wa.me/?text=${text}`, "_blank");
+      });
+
+      document.getElementById("sf-copy-report").addEventListener("click", () => {
+        const text = buildReportText();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById("sf-copy-report");
+            if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => { if (btn) btn.textContent = "📋 Copy Report"; }, 2000); }
+          });
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); } catch(e){}
+          document.body.removeChild(ta);
+          const btn = document.getElementById("sf-copy-report");
+          if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => { if (btn) btn.textContent = "📋 Copy Report"; }, 2000); }
+        }
+      });
+    }
+
     // ─── QUIZ FLOW ────────────────────────────────────────────────────────────
     function startQuiz(){
       score=0;total=0;streak=0;qIdx=0;inProgress=true;locked=false;attempted=false;
+      correctCount=0; correctionCount=0;
+      mistakeLog=[];
       recentIds=[];
       feedbackEl.innerHTML="";hintEl.textContent="";
       updateScore();
@@ -890,7 +1050,7 @@
       $("sf-formula-details").open=false;
       $("sf-instructions").textContent=isTypeIn()
         ?"Type the formula (right-hand side only) using the keyboard below. (10 questions)"
-        :"Memorise the formula — pick the correct one. (10 questions per quiz)";
+        :"Memorise the formula — pick the correct one. You get 1 chance to self-correct if wrong. (10 questions)";
       nextQ();
     }
 
@@ -902,16 +1062,31 @@
       optionsEl.innerHTML=""; hintEl.textContent="";
       hideTypeIn();
       timerEl.textContent=isWarmup()?"☕ Warm-Up (No Timer)":"⏱ –";
-      feedbackEl.textContent=isWarmup()
-        ?"✅ Warm-Up complete! (No score recorded.)"
-        :`✅ Quiz complete! Final score: ${score} / ${total}`;
+      const scoreStr = isWarmup() ? "–" : `${correctCount}C${correctionCount}`;
+      feedbackEl.innerHTML = isWarmup()
+        ? `✅ Warm-Up complete! (No score recorded.)`
+        : `✅ Quiz complete! Final score: <strong>${scoreStr} / ${TOTAL_QUESTIONS}</strong>
+           <br><small style="color:#a5b4fc;">${correctCount} correct first try + ${correctionCount} corrected on 2nd attempt</small>`;
       nextBtn.textContent="Restart Quiz ↻"; nextBtn.disabled=false;
       $("sf-formula-details").open=false;
+
+      // Show mistake report button
+      if (!isWarmup()) {
+        const reportBtn = document.createElement("button");
+        reportBtn.className = "sf-btn sf-secondary";
+        reportBtn.textContent = "📋 View Mistake Report";
+        reportBtn.style.marginLeft = "8px";
+        reportBtn.addEventListener("click", showMistakeReport);
+        feedbackEl.appendChild(document.createElement("br"));
+        feedbackEl.appendChild(reportBtn);
+      }
     }
 
     function resetQuiz(){
       stopTimer();inProgress=false;locked=false;attempted=false;
       score=0;total=0;streak=0;qIdx=0;recentIds=[];currentJumble=null;
+      correctCount=0; correctionCount=0; mistakeLog=[];
+      firstAttemptWrong=false; correctionUsed=false;
       topicSel.disabled=false; modeSel.disabled=false;
       hideTypeIn(); updateScore();
       metaEl.textContent="Ready";
@@ -927,7 +1102,9 @@
       if(!inProgress)return;
       if(qIdx>=TOTAL_QUESTIONS){endQuiz();return;}
       $("sf-formula-details").open=false;
-      stopTimer();locked=false;attempted=false;nextBtn.disabled=true;
+      stopTimer();locked=false;attempted=false;
+      firstAttemptWrong=false; correctionUsed=false;
+      nextBtn.disabled=true;
       feedbackEl.innerHTML="";optionsEl.innerHTML="";hintEl.textContent="";insaneInput="";
       qIdx++;
       metaEl.textContent=`Question ${qIdx} of ${TOTAL_QUESTIONS}`;
@@ -936,12 +1113,10 @@
       recentIds.push(base.id);
       if(recentIds.length>RECENT_LIMIT)recentIds.shift();
 
-      // Build jumble: Super Hard = identity (false = no jumble), Insane = true
       const doJumble = isInsane();
       const doTypeIn = isTypeIn();
       currentJumble = doTypeIn ? makeJumble(base.id, doJumble) : null;
 
-      // Override current with jumbled formula/desc if in type-in mode
       current = doTypeIn ? Object.assign({}, base, {
         formula:    currentJumble.fullFormula,
         desc:       currentJumble.vars.map(v=>`${v.s} = ${v.n}`).join(", "),
@@ -949,7 +1124,6 @@
 
       questionEl.textContent = current.question;
 
-      // SVG: pass svgArg (with letters) if type-in, otherwise false
       const svgArg = doTypeIn ? currentJumble.svgArg : false;
       shapeEl.innerHTML = shapeSVG(current.shape, svgArg);
 
@@ -961,6 +1135,8 @@
           const d=document.createElement("div");
           d.className="sf-option";
           d.dataset.correct=opt.id===base.id?"1":"0";
+          d.dataset.formula=opt.formula;
+          d.dataset.letter=LETTERS[i]||"?";
           d.innerHTML=`<div class="sf-letter">${LETTERS[i]||"?"}</div>
                        <div class="sf-opt-formula">${stripLHS(opt.formula)}</div>
                        <div class="sf-desc">${opt.desc}</div>`;
@@ -977,14 +1153,22 @@
       });
     }
 
+    function dimAllExcept(exceptCard){
+      optionsEl.querySelectorAll(".sf-option").forEach(c=>{
+        if(c!==exceptCard) c.classList.add("dimmed");
+      });
+    }
+
     // ─── MULTIPLE-CHOICE HANDLER ──────────────────────────────────────────────
     function pick(card){
       if(locked||!inProgress)return;
       const ok=card.dataset.correct==="1";
-      attempted=true; nextBtn.disabled=false;
+      const chosenFormula = stripLHS(card.dataset.formula || "");
+      const chosenLetter  = card.dataset.letter || "";
 
+      // ── WARM-UP ──
       if(isWarmup()){
-        locked=true;
+        locked=true; attempted=true; nextBtn.disabled=false;
         card.classList.add(ok?"correct":"wrong");
         revealCorrectCard();
         if(ok){ feedbackEl.innerHTML="✅ Correct!"; confetti(2); play(aOk); }
@@ -992,28 +1176,91 @@
         return;
       }
 
-      const inTime=timeLeft>0;
-      locked=true; stopTimer(); total++;
-
-      if(inTime){
-        if(ok){ score++;streak++; feedbackEl.innerHTML="✅ Correct!"; card.classList.add("correct"); confetti(3); play(aOk); }
-        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`; card.classList.add("wrong"); play(aBad); }
-      } else {
-        if(ok){ score+=0.5;streak=0; feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts."; card.classList.add("correct"); confetti(1); play(aOk); }
-        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`; card.classList.add("wrong"); play(aBad); }
+      // ── FIRST ATTEMPT ──
+      if(!firstAttemptWrong) {
+        if(ok){
+          // Correct on first try
+          locked=true; attempted=true; nextBtn.disabled=false;
+          stopTimer(); total++;
+          const inTime=timeLeft>0;
+          if(inTime){
+            correctCount++; streak++;
+            feedbackEl.innerHTML="✅ Correct!";
+            card.classList.add("correct");
+            confetti(3); play(aOk);
+          } else {
+            // After time out: half mark, still counts as correct (not correction)
+            correctCount+=0.5; streak=0;
+            feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
+            card.classList.add("correct");
+            confetti(1); play(aOk);
+          }
+          updateScore();
+          revealCorrectCard();
+        } else {
+          // Wrong on first try — grant one correction chance
+          firstAttemptWrong=true;
+          card.classList.add("wrong");
+          card.classList.add("dimmed");
+          card.style.pointerEvents="none";
+          feedbackEl.innerHTML=`❌ Wrong! <strong>One chance to correct yourself.</strong> Pick again.`;
+          play(aBad);
+          hintEl.textContent="⚠️ 1 correction chance remaining — choose carefully!";
+          // Record the wrong answer details for potential mistake log
+          card._wrongFormula = chosenFormula;
+          card._wrongLetter  = chosenLetter;
+        }
+        return;
       }
-      updateScore();
-      revealCorrectCard();
+
+      // ── CORRECTION ATTEMPT (second pick) ──
+      if(firstAttemptWrong && !correctionUsed) {
+        correctionUsed=true;
+        locked=true; attempted=true; nextBtn.disabled=false;
+        stopTimer(); total++;
+        hintEl.textContent="";
+
+        // Find what was selected wrong the first time
+        const prevWrongCard = optionsEl.querySelector(".sf-option.wrong.dimmed");
+        const prevWrongFormula = prevWrongCard ? stripLHS(prevWrongCard.dataset.formula||"") : "?";
+        const prevWrongLetter  = prevWrongCard ? (prevWrongCard.dataset.letter||"?") : "?";
+
+        if(ok){
+          // Corrected successfully
+          correctionCount++;
+          streak=0;
+          feedbackEl.innerHTML=`🟡 Corrected! <span class="sf-correction-badge">C</span> Corrected on 2nd attempt — counts as correction.`;
+          card.classList.add("correct");
+          confetti(1); play(aOk);
+          // Not logged as a mistake since they eventually got it right (correction)
+        } else {
+          // Wrong again — no points, log as mistake
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong again. ${revealBox(current.formula)}`;
+          card.classList.add("wrong");
+          play(aBad);
+          // Log this mistake — use their second (final) wrong answer
+          mistakeLog.push({
+            qNum:      qIdx,
+            question:  current.question,
+            wrongFormula: `${prevWrongLetter}. ${prevWrongFormula} → ${chosenLetter}. ${chosenFormula}`,
+            correctFormula: current.formula,
+            wasCorrection: true,
+          });
+        }
+        updateScore();
+        revealCorrectCard();
+        return;
+      }
     }
 
     // ─── TYPE-IN SUBMIT HANDLER ───────────────────────────────────────────────
     function submitTypeIn(){
       if(locked||!inProgress)return;
       const ok = currentJumble ? checkTypeIn(currentJumble.accepted, insaneInput) : false;
-      attempted=true; nextBtn.disabled=false;
 
       if(isWarmup()){
-        locked=true;
+        locked=true; attempted=true; nextBtn.disabled=false;
         insaneDisp.classList.add(ok?"correct-flash":"wrong-flash");
         if(ok){ feedbackEl.innerHTML="✅ Correct!"; confetti(2); play(aOk); }
         else  { feedbackEl.innerHTML=`❌ Not quite. ${revealBox(current.formula)}`; play(aBad); }
@@ -1021,15 +1268,49 @@
         return;
       }
 
+      // For type-in modes: no correction chance (1 shot) — log mistake if wrong
+      attempted=true; nextBtn.disabled=false;
       const inTime=timeLeft>0;
       locked=true; stopTimer(); total++;
 
       if(inTime){
-        if(ok){ score++;streak++; feedbackEl.innerHTML="✅ Correct! +1 pt"; insaneDisp.classList.add("correct-flash"); confetti(3); play(aOk); }
-        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`; insaneDisp.classList.add("wrong-flash"); play(aBad); }
+        if(ok){
+          correctCount++;streak++;
+          feedbackEl.innerHTML="✅ Correct! +1 pt";
+          insaneDisp.classList.add("correct-flash");
+          confetti(3); play(aOk);
+        } else {
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong. ${revealBox(current.formula)}`;
+          insaneDisp.classList.add("wrong-flash");
+          play(aBad);
+          mistakeLog.push({
+            qNum:      qIdx,
+            question:  current.question,
+            wrongFormula: insaneInput || "(blank)",
+            correctFormula: current.formula,
+            wasCorrection: false,
+          });
+        }
       } else {
-        if(ok){ score+=0.5;streak=0; feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts."; insaneDisp.classList.add("correct-flash"); confetti(1); play(aOk); }
-        else  { streak=0; feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`; insaneDisp.classList.add("wrong-flash"); play(aBad); }
+        if(ok){
+          correctCount+=0.5;streak=0;
+          feedbackEl.innerHTML="🟡 Correct (after time) — +0.5 pts.";
+          insaneDisp.classList.add("correct-flash");
+          confetti(1); play(aOk);
+        } else {
+          streak=0;
+          feedbackEl.innerHTML=`❌ Wrong (0 pts). ${revealBox(current.formula)}`;
+          insaneDisp.classList.add("wrong-flash");
+          play(aBad);
+          mistakeLog.push({
+            qNum:      qIdx,
+            question:  current.question,
+            wrongFormula: insaneInput || "(blank)",
+            correctFormula: current.formula,
+            wasCorrection: false,
+          });
+        }
       }
       updateScore();
       insaneSubmit.disabled=true; insaneClear.disabled=true;
@@ -1065,7 +1346,7 @@
         if(isWarmup())return;
         if(!window.confirm("⚠️ Opening the Formula Sheet deducts 0.5 marks.\n\nOpen it?"))
           {e.preventDefault();return;}
-        if(inProgress){ score-=0.5; updateScore(); feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";}
+        if(inProgress){ correctCount-=0.5; updateScore(); feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";}
       });
     }
 
