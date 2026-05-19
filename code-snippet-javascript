@@ -256,7 +256,8 @@
           const {map,vars} = assign(["l"],["Side length"],[]);
           const L = map["l"];
           const areaAccepted = withMultVariants([`${L}²`,`${L}^2`,`${L}*${L}`,`${L}×${L}`,`${L}${L}`]);
-          const perAccepted  = withMultVariants(allPerms(["4",L]).concat(allPerms(["4","*",L])).concat(allPerms(["4","×",L])));
+          const perAccepted  = withMultVariants(allPerms(["4",L]).concat(allPerms(["4","*",L])).concat(allPerms(["4","×",L])))
+            .concat([`${L}+${L}+${L}+${L}`]);
           return {
             map, vars,
             svgArg: { shape:"square", L },
@@ -272,7 +273,14 @@
           const {map,vars} = assign(["l","b"],["Length","Breadth"],[]);
           const L=map["l"], B=map["b"];
           const areaAccepted = withMultVariants(allPerms([L,B]));
-          const perAccepted  = [`2(${L}+${B})`,`2(${B}+${L})`,`2${L}+2${B}`,`2${B}+2${L}`,`2*(${L}+${B})`,`2*(${B}+${L})`,`2×(${L}+${B})`,`2×(${B}+${L})`];
+          const perAccepted  = [
+            `2(${L}+${B})`,`2(${B}+${L})`,`2${L}+2${B}`,`2${B}+2${L}`,
+            `2*(${L}+${B})`,`2*(${B}+${L})`,`2×(${L}+${B})`,`2×(${B}+${L})`,
+            // l+b+l+b style — all orderings of two L's and two B's summed
+            `${L}+${B}+${L}+${B}`,`${L}+${L}+${B}+${B}`,
+            `${B}+${L}+${B}+${L}`,`${B}+${B}+${L}+${L}`,
+            `${L}+${B}+${B}+${L}`,`${B}+${L}+${L}+${B}`,
+          ];
           return {
             map, vars,
             svgArg: { shape:"rectangle", L, B },
@@ -304,8 +312,14 @@
           const lTop=map["a"], lBot=map["b"], lH=map["c"], lSlant=map["d"], lSlant2=map["e"];
           const fracs = ["½","1/2","0.5"];
           const sums  = [`(${lTop}+${lBot})`,`(${lBot}+${lTop})`];
+          // (a+b)/2 * c  style — sum first, then divide by 2, then multiply height
+          const divStyle = sums.flatMap(s => [
+            `${s}/2*${lH}`, `${s}/2×${lH}`, `${s}/2${lH}`,
+            `${lH}*${s}/2`, `${lH}×${s}/2`, `${lH}${s}/2`,
+          ]);
           const base = fracs.flatMap(f => sums.flatMap(s => allPerms([f,s,lH])))
-            .concat(sums.flatMap(s => [`${s}${lH}/2`,`${s}*${lH}/2`,`${s}×${lH}/2`,`${s}${lH}/2`]));
+            .concat(sums.flatMap(s => [`${s}${lH}/2`,`${s}*${lH}/2`,`${s}×${lH}/2`]))
+            .concat(divStyle);
           return {
             map,
             vars: [],
@@ -1344,9 +1358,9 @@
       fmSummary.addEventListener("click", e=>{
         if(fmDetails.open)return;
         if(isWarmup())return;
-        if(!window.confirm("⚠️ Opening the Formula Sheet deducts 0.5 marks.\n\nOpen it?"))
+        if(!window.confirm("⚠️ Opening the Formula Sheet deducts 1 mark.\n\nOpen it?"))
           {e.preventDefault();return;}
-        if(inProgress){ correctCount-=0.5; updateScore(); feedbackEl.textContent="⚠️ −0.5 marks (Formula Sheet opened).";}
+        if(inProgress){ correctCount-=1; updateScore(); feedbackEl.textContent="⚠️ −1 mark (Formula Sheet opened).";}
       });
     }
 
